@@ -1,4 +1,4 @@
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
@@ -125,11 +125,10 @@ export default function DashboardScreen() {
           </View>
         </Panel>
 
-        <Link href="/(app)/add-transaction" asChild>
-          <View>
-            <PrimaryButton label="Add transaction" />
-          </View>
-        </Link>
+        <PrimaryButton
+          label="Add transaction"
+          onPress={() => router.push("/(app)/add-transaction")}
+        />
 
         <Panel>
           <View className="mb-4 flex-row items-center justify-between">

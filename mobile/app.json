@@ -8,9 +8,11 @@
     "scheme": "expensemanager",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.expensemanager.mobile"
     },
     "android": {
+      "package": "com.expensemanager.mobile",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -40,6 +42,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bcd0dde0-1989-44fb-a764-902d22c06443"
+      }
     }
   }
 }
