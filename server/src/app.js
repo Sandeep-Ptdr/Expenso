@@ -1,0 +1,45 @@
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const routes = require("./routes");
+const env = require("./config/env");
+const logger = require("./utils/logger");
+const { notFoundHandler } = require("./middlewares/not-found.middleware");
+const { errorHandler } = require("./middlewares/error.middleware");
+const { apiLimiter } = require("./middlewares/rate-limit.middleware");
+
+const app = express();
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  })
+);
+
+app.use(
+  cors({
+    origin: env.clientOrigin,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(apiLimiter);
+
+// Keep request logging lightweight for now; we can swap in a dedicated logger later.
+app.use((req, res, next) => {
+  if (env.nodeEnv === "development") {
+    logger.info(`${req.method} ${req.originalUrl}`);
+  }
+
+  next();
+});
+
+app.use("/api", routes);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+module.exports = app;
