@@ -37,6 +37,16 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Expense Manager API is running.",
+    data: {
+      healthCheck: "/api/health",
+    },
+  });
+});
+
 app.use("/api", routes);
 
 app.use(notFoundHandler);
