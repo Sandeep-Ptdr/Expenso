@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
 
 import FeedbackCard from "@/components/ui/FeedbackCard";
@@ -11,22 +11,62 @@ import PrimaryButton from "@/components/ui/PrimaryButton";
 import Screen from "@/components/ui/Screen";
 import TransactionCard from "@/features/transactions/components/TransactionCard";
 import { useAuth } from "@/hooks/use-auth";
+import { aiService } from "@/services/ai/ai.service";
+import { ApiError } from "@/services/api/http";
 import { useTransactionStore } from "@/store/transaction-store";
+import type { MonthlyInsightsResponse } from "@/types/transaction";
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const transactions = useTransactionStore((state) => state.overviewTransactions);
   const isLoading = useTransactionStore((state) => state.isOverviewLoading);
   const error = useTransactionStore((state) => state.overviewError);
   const fetchOverviewTransactions = useTransactionStore(
     (state) => state.fetchOverviewTransactions
   );
+  const [insights, setInsights] =
+    useState<MonthlyInsightsResponse["data"] | null>(null);
+  const [insightsError, setInsightsError] = useState("");
+  const [isInsightsLoading, setIsInsightsLoading] = useState(true);
+
+  const loadMonthlyInsights = useCallback(async () => {
+    if (!token) {
+      setInsights(null);
+      setInsightsError("");
+      setIsInsightsLoading(false);
+      return;
+    }
+
+    try {
+      setIsInsightsLoading(true);
+      setInsightsError("");
+
+      const now = new Date();
+      const response = await aiService.getMonthlyInsights(token, {
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+        timezone: "Asia/Calcutta",
+      });
+
+      setInsights(response.data);
+    } catch (loadError) {
+      setInsights(null);
+      setInsightsError(
+        loadError instanceof ApiError
+          ? loadError.message
+          : "Unable to load AI insights right now."
+      );
+    } finally {
+      setIsInsightsLoading(false);
+    }
+  }, [token]);
 
   useFocusEffect(
     useCallback(() => {
       fetchOverviewTransactions();
-    }, [fetchOverviewTransactions])
+      loadMonthlyInsights();
+    }, [fetchOverviewTransactions, loadMonthlyInsights])
   );
 
   const income = transactions
@@ -125,10 +165,103 @@ export default function DashboardScreen() {
           </View>
         </Panel>
 
-        <PrimaryButton
-          label="Add transaction"
-          onPress={() => router.push("/(app)/add-transaction")}
-        />
+        <Panel>
+          <View className="mb-4 flex-row items-center justify-between">
+            <Text className="text-lg font-semibold text-ink-900">
+              AI Monthly Insight
+            </Text>
+            <Text
+              className="text-sm font-semibold text-forest-700"
+              onPress={loadMonthlyInsights}
+            >
+              Refresh
+            </Text>
+          </View>
+
+          {isInsightsLoading ? (
+            <LoadingCard label="Generating your monthly AI insight..." />
+          ) : insightsError ? (
+            <FeedbackCard
+              title="Unable to load AI insight"
+              message={insightsError}
+              tone="error"
+              actionLabel="Try Again"
+              onAction={loadMonthlyInsights}
+            />
+          ) : insights ? (
+            <View className="gap-4">
+              <View className="gap-2">
+                <Text className="text-xl font-semibold text-ink-900">
+                  {insights.insight.headline}
+                </Text>
+                <Text className="text-base leading-7 text-ink-700">
+                  {insights.insight.summary}
+                </Text>
+              </View>
+
+              <View className="rounded-[24px] bg-sand-50 px-4 py-4">
+                <Text className="text-sm font-semibold text-ink-900">
+                  Suggested action
+                </Text>
+                <Text className="mt-2 text-base leading-7 text-ink-700">
+                  {insights.insight.suggestion}
+                </Text>
+              </View>
+
+              <View className="gap-2">
+                <Text className="text-sm font-semibold text-ink-900">
+                  Top expense categories this month
+                </Text>
+                {insights.topCategories.length === 0 ? (
+                  <Text className="text-base text-ink-700">
+                    No expense categories yet for this month.
+                  </Text>
+                ) : (
+                  insights.topCategories.map((category) => (
+                    <View
+                      key={category.category}
+                      className="flex-row items-center justify-between rounded-2xl bg-sand-50 px-4 py-3"
+                    >
+                      <Text className="text-base font-medium text-ink-900">
+                        {category.category}
+                      </Text>
+                      <Text className="text-base font-semibold text-forest-700">
+                        Rs. {category.total.toFixed(2)}
+                      </Text>
+                    </View>
+                  ))
+                )}
+              </View>
+
+              <Text className="text-sm font-medium text-forest-700">
+                Based on {insights.transactionsAnalyzed} transaction
+                {insights.transactionsAnalyzed === 1 ? "" : "s"} from{" "}
+                {insights.month}/{insights.year}.
+              </Text>
+            </View>
+          ) : (
+            <FeedbackCard
+              title="No insights available"
+              message="Add a few transactions this month to unlock AI-generated summaries and spending suggestions."
+            />
+          )}
+        </Panel>
+
+        <View className="flex-row gap-3">
+          <View className="flex-1">
+            <PrimaryButton
+              label="AI quick add"
+              variant="ghost"
+              onPress={() => router.push("/(app)/ai-add-transaction")}
+            />
+          </View>
+          <View className="flex-1">
+            <PrimaryButton
+              label="Add transaction"
+              onPress={() => router.push("/(app)/add-transaction")}
+            />
+          </View>
+        </View>
 
         <Panel>
           <View className="mb-4 flex-row items-center justify-between">

@@ -27,6 +27,12 @@ export default function TabsLayout() {
           title: "Transactions",
         }}
       />
+      <Tabs.Screen
+        name="assistant"
+        options={{
+          title: "Assistant",
+        }}
+      />
     </Tabs>
   );
 }

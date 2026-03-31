@@ -31,6 +31,12 @@ export default function AppLayout() {
           presentation: "modal",
         }}
       />
+      <Stack.Screen
+        name="ai-add-transaction"
+        options={{
+          presentation: "modal",
+        }}
+      />
     </Stack>
   );
 }
