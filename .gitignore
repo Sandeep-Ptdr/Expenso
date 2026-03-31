@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+server/node_modules/
+mobile/node_modules/
+
+# Environment files
+.env
+server/.env
+mobile/.env
+
+# Logs
+*.log
+server/server.log
+server/server.err.log
+mobile/expo.log
+mobile/expo.err.log
+
+# Expo / React Native
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+
+# Coverage / build artifacts
+coverage/
+
+# OS files
+.DS_Store
+Thumbs.db
