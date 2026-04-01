@@ -2,7 +2,8 @@ const AppError = require("../utils/app-error");
 const env = require("../config/env");
 const Transaction = require("../models/transaction.model");
 
-const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+const OPENROUTER_API_URL =
+  "https://openrouter.ai/api/v1/chat/completions";
 
 const parseJsonResponse = (content) => {
   try {
@@ -12,14 +13,22 @@ const parseJsonResponse = (content) => {
   }
 };
 
-const extractGeminiText = (response) => {
-  const text = response?.candidates?.[0]?.content?.parts
-    ?.map((part) => part.text)
-    .filter((value) => typeof value === "string" && value.trim())
-    .join("");
+const extractOpenRouterText = (response) => {
+  const content = response?.choices?.[0]?.message?.content;
 
-  if (text && text.trim()) {
-    return text.trim();
+  if (typeof content === "string" && content.trim()) {
+    return content.trim();
+  }
+
+  if (Array.isArray(content)) {
+    const text = content
+      .map((item) => item?.text)
+      .filter((value) => typeof value === "string" && value.trim())
+      .join("");
+
+    if (text && text.trim()) {
+      return text.trim();
+    }
   }
 
   throw new AppError("AI response did not include any text output.", 502);
@@ -70,78 +79,112 @@ const getMonthDateRange = ({ month, year }) => {
   };
 };
 
-const generateGeminiContent = async ({
-  prompt,
-  systemInstruction,
-  responseMimeType = "text/plain",
-  parts,
+const mapMimeTypeToOpenRouterAudioFormat = (mimeType) => {
+  const normalizedMimeType = String(mimeType || "").toLowerCase();
+
+  if (normalizedMimeType.includes("wav")) {
+    return "wav";
+  }
+
+  if (normalizedMimeType.includes("mpeg") || normalizedMimeType.includes("mp3")) {
+    return "mp3";
+  }
+
+  if (
+    normalizedMimeType.includes("aac") ||
+    normalizedMimeType.includes("mp4") ||
+    normalizedMimeType.includes("m4a")
+  ) {
+    return "mp3";
+  }
+
+  if (normalizedMimeType.includes("webm")) {
+    return "wav";
+  }
+
+  return "mp3";
+};
+
+const generateOpenRouterCompletion = async ({
+  messages,
+  model,
+  responseFormat,
 }) => {
-  if (!env.geminiApiKey) {
+  if (!env.openRouterApiKey) {
     throw new AppError(
-      "Gemini AI is not configured. Add GEMINI_API_KEY on the server.",
+      "OpenRouter AI is not configured. Add OPENROUTER_API_KEY on the server.",
       503
     );
   }
 
-  const response = await fetch(
-    `${GEMINI_BASE_URL}/${env.geminiModel}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": env.geminiApiKey,
-      },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: systemInstruction }],
-        },
-        contents: [
-          {
-            role: "user",
-            parts: parts || [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType,
-        },
-      }),
-    }
-  );
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${env.openRouterApiKey}`,
+  };
+
+  if (env.openRouterSiteUrl) {
+    headers["HTTP-Referer"] = env.openRouterSiteUrl;
+  }
+
+  if (env.openRouterAppName) {
+    headers["X-Title"] = env.openRouterAppName;
+  }
+
+  const response = await fetch(OPENROUTER_API_URL, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: model || env.openRouterModel,
+      messages,
+      temperature: 0.2,
+      ...(responseFormat ? { response_format: responseFormat } : {}),
+    }),
+  });
 
   const data = await response.json();
 
   if (!response.ok) {
     const message =
       data?.error?.message ||
-      "Gemini request failed while generating a response.";
+      "OpenRouter request failed while generating a response.";
 
     throw new AppError(message, response.status || 502);
   }
 
-  return extractGeminiText(data);
+  return extractOpenRouterText(data);
 };
 
 const transcribeAudio = async ({ audioBase64, mimeType }) => {
-  return generateGeminiContent({
-    systemInstruction:
-      "You transcribe short expense-tracker voice notes into clean text. " +
-      "Return only the transcript text. " +
-      "Keep rupee amounts, names, dates, categories, and payment method words exactly when possible. " +
-      "Prefer words like cash, online, lunch, salary, rent, transfer, food, shopping, transport, and bill when they are spoken. " +
-      "If the speaker says a number, preserve it as digits whenever possible. " +
-      "Do not add commentary or labels.",
-    parts: [
+  return generateOpenRouterCompletion({
+    model: env.openRouterAudioModel,
+    messages: [
       {
-        text:
-          "Transcribe this expense tracking voice note accurately. " +
-          "Preserve names, rupee amounts, dates, and words like cash, online, lunch, salary, rent, transfer, food, shopping, transport, and bill.",
+        role: "system",
+        content:
+          "You transcribe short expense-tracker voice notes into clean text. " +
+          "Return only the transcript text. " +
+          "Keep rupee amounts, names, dates, categories, and payment method words exactly when possible. " +
+          "Prefer words like cash, online, lunch, salary, rent, transfer, food, shopping, transport, and bill when they are spoken. " +
+          "If the speaker says a number, preserve it as digits whenever possible. " +
+          "Do not add commentary or labels.",
       },
       {
-        inlineData: {
-          mimeType,
-          data: audioBase64,
-        },
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text:
+              "Transcribe this expense tracking voice note accurately. " +
+              "Preserve names, rupee amounts, dates, and words like cash, online, lunch, salary, rent, transfer, food, shopping, transport, and bill.",
+          },
+          {
+            type: "input_audio",
+            input_audio: {
+              data: audioBase64,
+              format: mapMimeTypeToOpenRouterAudioFormat(mimeType),
+            },
+          },
+        ],
       },
     ],
   });
@@ -150,20 +193,28 @@ const transcribeAudio = async ({ audioBase64, mimeType }) => {
 const parseTransactionText = async ({ text, timezone }) => {
   const today = new Date().toISOString().slice(0, 10);
   const parsedTransaction = parseJsonResponse(
-    await generateGeminiContent({
-      systemInstruction:
-        "You extract structured expense tracker transactions from natural language. Return valid JSON only with this exact shape: " +
-        '{"type":string|null,"amount":number|null,"category":string|null,"paymentMethod":string|null,"description":string,"date":string|null,"person":string,"confidence":number|null,"missingFields":string[]}. ' +
-        'Allowed "type" values: income, expense, transfer. Allowed "paymentMethod" values: cash, online. ' +
-        "Use null when a field cannot be determined confidently. " +
-        "For phrases like today, resolve them using the provided timezone and current date. " +
-        "Choose a practical category like Food, Salary, Transport, Rent, Bills, Shopping, Transfer, or Other. " +
-        "If the text contains a clear rupee amount or a clear payment word like cash or online, preserve it accurately.",
-      prompt:
-        `Timezone: ${timezone}\n` +
-        `Current date: ${today}\n` +
-        `Transaction text: ${text}`,
-      responseMimeType: "application/json",
+    await generateOpenRouterCompletion({
+      messages: [
+        {
+          role: "system",
+          content:
+            "You extract structured expense tracker transactions from natural language. Return valid JSON only with this exact shape: " +
+            '{"type":string|null,"amount":number|null,"category":string|null,"paymentMethod":string|null,"description":string,"date":string|null,"person":string,"confidence":number|null,"missingFields":string[]}. ' +
+            'Allowed "type" values: income, expense, transfer. Allowed "paymentMethod" values: cash, online. ' +
+            "Use null when a field cannot be determined confidently. " +
+            "For phrases like today, resolve them using the provided timezone and current date. " +
+            "Choose a practical category like Food, Salary, Transport, Rent, Bills, Shopping, Transfer, or Other. " +
+            "If the text contains a clear rupee amount or a clear payment word like cash or online, preserve it accurately.",
+        },
+        {
+          role: "user",
+          content:
+            `Timezone: ${timezone}\n` +
+            `Current date: ${today}\n` +
+            `Transaction text: ${text}`,
+        },
+      ],
+      responseFormat: { type: "json_object" },
     })
   );
 
@@ -184,18 +235,26 @@ const askAssistant = async ({ userId, question, timezone }) => {
   );
 
   return {
-    answer: await generateGeminiContent({
-      systemInstruction:
-        "You are a concise personal finance assistant for an expense tracker. " +
-        "Answer using only the provided transaction data. " +
-        "If the data is insufficient, say that clearly. " +
-        "Do not invent transactions. " +
-        "Keep answers practical and short, and when useful include totals and category names.",
-      prompt:
-        `Timezone: ${timezone}\n` +
-        `Current date: ${today}\n` +
-        `User question: ${question}\n\n` +
-        `Transactions:\n${transactionContext}`,
+    answer: await generateOpenRouterCompletion({
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a concise personal finance assistant for an expense tracker. " +
+            "Answer using only the provided transaction data. " +
+            "If the data is insufficient, say that clearly. " +
+            "Do not invent transactions. " +
+            "Keep answers practical and short, and when useful include totals and category names.",
+        },
+        {
+          role: "user",
+          content:
+            `Timezone: ${timezone}\n` +
+            `Current date: ${today}\n` +
+            `User question: ${question}\n\n` +
+            `Transactions:\n${transactionContext}`,
+        },
+      ],
     }),
     transactionsAnalyzed: transactions.length,
   };
@@ -244,23 +303,32 @@ const getMonthlyInsights = async ({ userId, timezone, month, year }) => {
   )
     .sort((left, right) => right.total - left.total)
     .slice(0, 3);
+
   const insight = parseJsonResponse(
-    await generateGeminiContent({
-      systemInstruction:
-        "You are a concise finance insights assistant. " +
-        'Return valid JSON only with this exact shape: {"headline":string,"summary":string,"suggestion":string}. ' +
-        "Use only the provided monthly transaction data. " +
-        "Keep each field short and practical.",
-      prompt:
-        `Timezone: ${timezone}\n` +
-        `Month: ${targetMonth}\n` +
-        `Year: ${targetYear}\n` +
-        `Income: ${income}\n` +
-        `Expense: ${expense}\n` +
-        `Balance: ${balance}\n` +
-        `Top categories: ${JSON.stringify(topCategories)}\n` +
-        `Transactions: ${JSON.stringify(formatTransactionsForAssistant(transactions))}`,
-      responseMimeType: "application/json",
+    await generateOpenRouterCompletion({
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a concise finance insights assistant. " +
+            'Return valid JSON only with this exact shape: {"headline":string,"summary":string,"suggestion":string}. ' +
+            "Use only the provided monthly transaction data. " +
+            "Keep each field short and practical.",
+        },
+        {
+          role: "user",
+          content:
+            `Timezone: ${timezone}\n` +
+            `Month: ${targetMonth}\n` +
+            `Year: ${targetYear}\n` +
+            `Income: ${income}\n` +
+            `Expense: ${expense}\n` +
+            `Balance: ${balance}\n` +
+            `Top categories: ${JSON.stringify(topCategories)}\n` +
+            `Transactions: ${JSON.stringify(formatTransactionsForAssistant(transactions))}`,
+        },
+      ],
+      responseFormat: { type: "json_object" },
     })
   );
 

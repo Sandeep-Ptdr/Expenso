@@ -13,8 +13,18 @@ module.exports = {
   clientOrigin: process.env.CLIENT_ORIGIN || "*",
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  geminiApiKey: process.env.GEMINI_API_KEY || "",
-  geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+  openRouterApiKey: (process.env.OPENROUTER_API_KEY || "").trim(),
+  openRouterModel:
+    (process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash-lite").trim(),
+  openRouterAudioModel:
+    (
+      process.env.OPENROUTER_AUDIO_MODEL ||
+      process.env.OPENROUTER_MODEL ||
+      "google/gemini-2.5-flash-lite"
+    ).trim(),
+  openRouterSiteUrl: (process.env.OPENROUTER_SITE_URL || "").trim(),
+  openRouterAppName:
+    (process.env.OPENROUTER_APP_NAME || "Expense Manager API").trim(),
   rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 900000,
   rateLimitMaxRequests: Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 300,
   authRateLimitMaxRequests:

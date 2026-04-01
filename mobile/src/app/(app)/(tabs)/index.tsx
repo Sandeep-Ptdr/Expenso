@@ -12,9 +12,26 @@ import Screen from "@/components/ui/Screen";
 import TransactionCard from "@/features/transactions/components/TransactionCard";
 import { useAuth } from "@/hooks/use-auth";
 import { aiService } from "@/services/ai/ai.service";
+import {
+  getCachedMonthlyInsight,
+  setCachedMonthlyInsight,
+} from "@/services/ai/insights-cache";
 import { ApiError } from "@/services/api/http";
 import { useTransactionStore } from "@/store/transaction-store";
 import type { MonthlyInsightsResponse } from "@/types/transaction";
+
+const getFriendlyInsightsErrorMessage = (message: string) => {
+  const normalizedMessage = message.toLowerCase();
+
+  if (
+    normalizedMessage.includes("quota exceeded") ||
+    normalizedMessage.includes("rate limit")
+  ) {
+    return "AI insight is temporarily busy right now. Please wait a moment and try again.";
+  }
+
+  return message;
+};
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -28,9 +45,13 @@ export default function DashboardScreen() {
   const [insights, setInsights] =
     useState<MonthlyInsightsResponse["data"] | null>(null);
   const [insightsError, setInsightsError] = useState("");
-  const [isInsightsLoading, setIsInsightsLoading] = useState(true);
+  const [isInsightsLoading, setIsInsightsLoading] = useState(false);
+  const getCurrentInsightCacheKey = useCallback(() => {
+    const now = new Date();
+    return `${user?.id || "guest"}-${now.getFullYear()}-${now.getMonth() + 1}`;
+  }, [user?.id]);
 
-  const loadMonthlyInsights = useCallback(async () => {
+  const loadMonthlyInsights = useCallback(async (forceRefresh = false) => {
     if (!token) {
       setInsights(null);
       setInsightsError("");
@@ -38,11 +59,24 @@ export default function DashboardScreen() {
       return;
     }
 
+    const now = new Date();
+    const cacheKey = getCurrentInsightCacheKey();
+
+    if (!forceRefresh) {
+      const cachedInsights = getCachedMonthlyInsight(cacheKey);
+
+      if (cachedInsights) {
+        setInsights(cachedInsights);
+        setInsightsError("");
+        setIsInsightsLoading(false);
+        return;
+      }
+    }
+
     try {
       setIsInsightsLoading(true);
       setInsightsError("");
 
-      const now = new Date();
       const response = await aiService.getMonthlyInsights(token, {
         month: now.getMonth() + 1,
         year: now.getFullYear(),
@@ -50,23 +84,36 @@ export default function DashboardScreen() {
       });
 
       setInsights(response.data);
+      setCachedMonthlyInsight(cacheKey, response.data);
     } catch (loadError) {
       setInsights(null);
       setInsightsError(
         loadError instanceof ApiError
-          ? loadError.message
+          ? getFriendlyInsightsErrorMessage(loadError.message)
           : "Unable to load AI insights right now."
       );
     } finally {
       setIsInsightsLoading(false);
     }
-  }, [token]);
+  }, [getCurrentInsightCacheKey, token]);
+
+  const hydrateMonthlyInsightsFromCache = useCallback(() => {
+    const cachedInsights = getCachedMonthlyInsight(getCurrentInsightCacheKey());
+
+    if (cachedInsights) {
+      setInsights(cachedInsights);
+      setInsightsError("");
+      return;
+    }
+
+    setInsights(null);
+  }, [getCurrentInsightCacheKey]);
 
   useFocusEffect(
     useCallback(() => {
       fetchOverviewTransactions();
-      loadMonthlyInsights();
-    }, [fetchOverviewTransactions, loadMonthlyInsights])
+      hydrateMonthlyInsightsFromCache();
+    }, [fetchOverviewTransactions, hydrateMonthlyInsightsFromCache])
   );
 
   const income = transactions
@@ -104,6 +151,7 @@ export default function DashboardScreen() {
             </Text>
             <Text className="text-3xl font-bold text-ink-900">
               {user?.name || "Dashboard"}
+              
             </Text>
           </View>
 
@@ -170,12 +218,14 @@ export default function DashboardScreen() {
             <Text className="text-lg font-semibold text-ink-900">
               AI Monthly Insight
             </Text>
-            <Text
-              className="text-sm font-semibold text-forest-700"
-              onPress={loadMonthlyInsights}
-            >
-              Refresh
-            </Text>
+            {insights ? (
+              <Text
+                className="text-sm font-semibold text-forest-700"
+                onPress={() => loadMonthlyInsights(true)}
+              >
+                Refresh
+              </Text>
+            ) : null}
           </View>
 
           {isInsightsLoading ? (
@@ -186,7 +236,7 @@ export default function DashboardScreen() {
               message={insightsError}
               tone="error"
               actionLabel="Try Again"
-              onAction={loadMonthlyInsights}
+              onAction={() => loadMonthlyInsights(true)}
             />
           ) : insights ? (
             <View className="gap-4">
@@ -240,10 +290,16 @@ export default function DashboardScreen() {
               </Text>
             </View>
           ) : (
-            <FeedbackCard
-              title="No insights available"
-              message="Add a few transactions this month to unlock AI-generated summaries and spending suggestions."
-            />
+            <View className="gap-4">
+              <FeedbackCard
+                title="No insights generated yet"
+                message="Generate an AI monthly insight when you want a summary. The result will be cached for a while so repeated visits do not consume quota immediately."
+              />
+              <PrimaryButton
+                label="Generate AI Insight"
+                onPress={() => loadMonthlyInsights(true)}
+              />
+            </View>
           )}
         </Panel>
 
