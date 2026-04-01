@@ -37,6 +37,27 @@ const aiExamples = [
   "Sent 1500 online to Rahul for rent",
 ];
 
+const getFriendlyVoiceErrorMessage = (message: string) => {
+  const normalizedMessage = message.toLowerCase();
+
+  if (
+    normalizedMessage.includes("input_audio") ||
+    normalizedMessage.includes("audio") ||
+    normalizedMessage.includes("unsupported")
+  ) {
+    return "Voice transcription is not supported by the current AI model or audio format. Try the text prompt for now, or switch to a model that supports audio input on OpenRouter.";
+  }
+
+  if (
+    normalizedMessage.includes("quota exceeded") ||
+    normalizedMessage.includes("rate limit")
+  ) {
+    return "Voice transcription is temporarily busy right now. Please wait a moment and try again.";
+  }
+
+  return message;
+};
+
 const buildCreatePayload = (
   parsedTransaction: ParsedTransaction
 ): CreateTransactionPayload | null => {
@@ -203,7 +224,7 @@ export default function AiAddTransactionScreen() {
       await parsePromptText(transcript);
     } catch (error) {
       if (error instanceof ApiError) {
-        setParseError(error.message);
+        setParseError(getFriendlyVoiceErrorMessage(error.message));
       } else {
         setParseError("Unable to transcribe your voice note right now.");
       }

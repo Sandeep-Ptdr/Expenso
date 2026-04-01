@@ -86,11 +86,9 @@ const mapMimeTypeToOpenRouterAudioFormat = (mimeType) => {
     return "wav";
   }
 
-  if (normalizedMimeType.includes("mpeg") || normalizedMimeType.includes("mp3")) {
-    return "mp3";
-  }
-
   if (
+    normalizedMimeType.includes("mpeg") ||
+    normalizedMimeType.includes("mp3") ||
     normalizedMimeType.includes("aac") ||
     normalizedMimeType.includes("mp4") ||
     normalizedMimeType.includes("m4a")
@@ -99,7 +97,7 @@ const mapMimeTypeToOpenRouterAudioFormat = (mimeType) => {
   }
 
   if (normalizedMimeType.includes("webm")) {
-    return "wav";
+    return "mp3";
   }
 
   return "mp3";

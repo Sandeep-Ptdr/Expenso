@@ -62,15 +62,18 @@ type TransactionStore = {
   isOverviewLoading: boolean;
   isFilteredLoading: boolean;
   isCreating: boolean;
+  isDeleting: boolean;
   overviewError: string;
   filteredError: string;
   createError: string;
+  deleteError: string;
   setFilters: (filters: Partial<TransactionFilters>) => void;
   clearFilters: () => void;
   reset: () => void;
   fetchOverviewTransactions: () => Promise<void>;
   fetchFilteredTransactions: () => Promise<void>;
   createTransaction: (payload: CreateTransactionPayload) => Promise<void>;
+  deleteTransaction: (transactionId: string) => Promise<void>;
 };
 
 export const useTransactionStore = create<TransactionStore>((set, get) => ({
@@ -80,9 +83,11 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
   isOverviewLoading: true,
   isFilteredLoading: true,
   isCreating: false,
+  isDeleting: false,
   overviewError: "",
   filteredError: "",
   createError: "",
+  deleteError: "",
 
   setFilters: (filters) => {
     set((state) => ({
@@ -105,9 +110,11 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
       isOverviewLoading: true,
       isFilteredLoading: true,
       isCreating: false,
+      isDeleting: false,
       overviewError: "",
       filteredError: "",
       createError: "",
+      deleteError: "",
     });
   },
 
@@ -203,6 +210,42 @@ export const useTransactionStore = create<TransactionStore>((set, get) => ({
       set({
         isCreating: false,
         createError: message,
+      });
+
+      throw error;
+    }
+  },
+
+  deleteTransaction: async (transactionId) => {
+    const token = useAuthStore.getState().token;
+
+    if (!token) {
+      throw new ApiError("Your session has expired. Please sign in again.", 401);
+    }
+
+    try {
+      set({ isDeleting: true, deleteError: "" });
+      await transactionsService.deleteTransaction(token, transactionId);
+      const { overviewTransactions, filteredTransactions } = get();
+
+      set({
+        overviewTransactions: overviewTransactions.filter(
+          (transaction) => transaction._id !== transactionId
+        ),
+        filteredTransactions: filteredTransactions.filter(
+          (transaction) => transaction._id !== transactionId
+        ),
+        isDeleting: false,
+      });
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Unable to delete this transaction right now.";
+
+      set({
+        isDeleting: false,
+        deleteError: message,
       });
 
       throw error;

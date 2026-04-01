@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
 import type { Transaction } from "@/types/transaction";
 
@@ -11,8 +11,12 @@ const typeTone = {
 
 function TransactionCard({
   transaction,
+  onDelete,
+  isDeleting = false,
 }: {
   transaction: Transaction;
+  onDelete?: (transactionId: string) => void;
+  isDeleting?: boolean;
 }) {
   const amountPrefix = transaction.type === "expense" ? "-" : "+";
   const dateLabel = new Date(transaction.date).toLocaleDateString("en-IN", {
@@ -50,6 +54,18 @@ function TransactionCard({
             <Text className="text-sm font-medium text-forest-700">
               Person: {transaction.person}
             </Text>
+          ) : null}
+
+          {onDelete ? (
+            <Pressable
+              onPress={() => onDelete(transaction._id)}
+              disabled={isDeleting}
+              className="mt-2 self-start rounded-full border border-coral-500/20 bg-coral-500/10 px-3 py-1"
+            >
+              <Text className="text-xs font-semibold text-coral-500">
+                {isDeleting ? "Deleting..." : "Delete"}
+              </Text>
+            </Pressable>
           ) : null}
         </View>
 

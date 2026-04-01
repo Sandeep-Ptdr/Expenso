@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Alert } from "react-native";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
 
 import FeedbackCard from "@/components/ui/FeedbackCard";
@@ -27,6 +28,32 @@ export default function TransactionsScreen() {
   const fetchFilteredTransactions = useTransactionStore(
     (state) => state.fetchFilteredTransactions
   );
+  const deleteTransaction = useTransactionStore((state) => state.deleteTransaction);
+  const isDeleting = useTransactionStore((state) => state.isDeleting);
+
+  const handleDeleteTransaction = (transactionId: string) => {
+    Alert.alert(
+      "Delete transaction",
+      "This entry will be removed permanently.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteTransaction(transactionId);
+            } catch (error) {
+              // Store/UI already handle the failure state.
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const applyFilters = () => {
     setFilters({
@@ -174,7 +201,12 @@ export default function TransactionsScreen() {
             />
           ) : (
             transactions.map((transaction) => (
-              <TransactionCard key={transaction._id} transaction={transaction} />
+              <TransactionCard
+                key={transaction._id}
+                transaction={transaction}
+                onDelete={handleDeleteTransaction}
+                isDeleting={isDeleting}
+              />
             ))
           )}
         </View>

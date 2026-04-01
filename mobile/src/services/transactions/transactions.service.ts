@@ -35,4 +35,14 @@ export const transactionsService = {
       body: payload,
     });
   },
+
+  deleteTransaction(token: string, transactionId: string) {
+    return http<{ success: boolean; message: string }>(
+      `/transactions/${transactionId}`,
+      {
+        method: "DELETE",
+        token,
+      }
+    );
+  },
 };
