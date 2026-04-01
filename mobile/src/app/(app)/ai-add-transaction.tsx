@@ -1,19 +1,15 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
-  ActivityIndicator,
   Platform,
   ScrollView,
   Text,
   View,
 } from "react-native";
 import {
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  useAudioRecorder,
-  useAudioRecorderState,
-} from "expo-audio";
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from "expo-speech-recognition";
 
 import FeedbackCard from "@/components/ui/FeedbackCard";
 import FilterChip from "@/components/ui/FilterChip";
@@ -28,7 +24,6 @@ import { useTransactionStore } from "@/store/transaction-store";
 import type {
   CreateTransactionPayload,
   ParsedTransaction,
-  RecordedAudioPayload,
 } from "@/types/transaction";
 
 const aiExamples = [
@@ -40,19 +35,34 @@ const aiExamples = [
 const getFriendlyVoiceErrorMessage = (message: string) => {
   const normalizedMessage = message.toLowerCase();
 
-  if (
-    normalizedMessage.includes("input_audio") ||
-    normalizedMessage.includes("audio") ||
-    normalizedMessage.includes("unsupported")
-  ) {
-    return "Voice transcription is not supported by the current AI model or audio format. Try the text prompt for now, or switch to a model that supports audio input on OpenRouter.";
+  if (normalizedMessage.includes("not-allowed")) {
+    return "Microphone permission is required for voice input.";
   }
 
   if (
-    normalizedMessage.includes("quota exceeded") ||
-    normalizedMessage.includes("rate limit")
+    normalizedMessage.includes("service-not-allowed") ||
+    normalizedMessage.includes("recognition unavailable")
   ) {
-    return "Voice transcription is temporarily busy right now. Please wait a moment and try again.";
+    return "Speech recognition is not available on this device right now. Please check the phone's voice input settings.";
+  }
+
+  if (
+    normalizedMessage.includes("language-not-supported") ||
+    normalizedMessage.includes("locale")
+  ) {
+    return "Speech recognition does not support the selected language on this device.";
+  }
+
+  if (normalizedMessage.includes("no-speech")) {
+    return "No speech was detected. Please try again and speak a little closer to the microphone.";
+  }
+
+  if (
+    normalizedMessage.includes("network") ||
+    normalizedMessage.includes("busy") ||
+    normalizedMessage.includes("server")
+  ) {
+    return "Speech recognition is temporarily unavailable. Please try again in a moment.";
   }
 
   return message;
@@ -85,18 +95,43 @@ const buildCreatePayload = (
 export default function AiAddTransactionScreen() {
   const router = useRouter();
   const { token } = useAuth();
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const recorderState = useAudioRecorderState(recorder);
   const createTransaction = useTransactionStore((state) => state.createTransaction);
   const isCreating = useTransactionStore((state) => state.isCreating);
   const [prompt, setPrompt] = useState("");
   const [parseError, setParseError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [isParsing, setIsParsing] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [parsedTransaction, setParsedTransaction] = useState<ParsedTransaction | null>(
     null
   );
+
+  useSpeechRecognitionEvent("start", () => {
+    setIsListening(true);
+    setParseError("");
+  });
+
+  useSpeechRecognitionEvent("end", () => {
+    setIsListening(false);
+  });
+
+  useSpeechRecognitionEvent("result", (event) => {
+    const transcript = event.results?.[0]?.transcript?.trim();
+
+    if (transcript) {
+      setPrompt(transcript);
+    }
+  });
+
+  useSpeechRecognitionEvent("error", (event) => {
+    setIsListening(false);
+
+    if (event.error === "aborted") {
+      return;
+    }
+
+    setParseError(getFriendlyVoiceErrorMessage(event.message || event.error));
+  });
 
   const parsePromptText = async (text: string) => {
     if (!token) {
@@ -115,30 +150,6 @@ export default function AiAddTransactionScreen() {
     });
 
     setParsedTransaction(response.data.parsedTransaction);
-  };
-
-  const blobToBase64 = async (blob: Blob) => {
-    return new Promise<RecordedAudioPayload>((resolve, reject) => {
-      const reader = new FileReader();
-
-      reader.onloadend = () => {
-        const result = reader.result;
-
-        if (typeof result !== "string") {
-          reject(new Error("Unable to read recorded audio."));
-          return;
-        }
-
-        const [, base64 = ""] = result.split(",");
-        resolve({
-          base64,
-          mimeType: blob.type || "audio/mp4",
-        });
-      };
-
-      reader.onerror = () => reject(new Error("Unable to read recorded audio."));
-      reader.readAsDataURL(blob);
-    });
   };
 
   const handleParse = async () => {
@@ -160,76 +171,46 @@ export default function AiAddTransactionScreen() {
 
   const handleMicPress = async () => {
     if (Platform.OS === "web") {
-      setParseError("Voice recording is available in the mobile app, not the web build.");
+      setParseError("Live microphone input is available in the mobile app, not the web build.");
       return;
     }
 
     try {
       setParseError("");
+      setParsedTransaction(null);
 
-      if (!recorderState.isRecording) {
-        const permission = await requestRecordingPermissionsAsync();
+      if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) {
+        setParseError(
+          "Speech recognition is not available on this device. Please enable voice input services in system settings."
+        );
+        return;
+      }
+
+      if (!isListening) {
+        const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
 
         if (!permission.granted) {
           setParseError("Microphone permission is required for voice input.");
           return;
         }
 
-        await setAudioModeAsync({
-          allowsRecording: true,
-          playsInSilentMode: true,
+        ExpoSpeechRecognitionModule.start({
+          lang: "en-US",
+          interimResults: true,
+          continuous: false,
+          maxAlternatives: 1,
+          addsPunctuation: true,
         });
-        await recorder.prepareToRecordAsync();
-        recorder.record();
         return;
       }
 
-      await recorder.stop();
-      await setAudioModeAsync({
-        allowsRecording: false,
-      });
-
-      if (!token) {
-        setParseError("Your session has expired. Please sign in again.");
-        return;
-      }
-
-      const recordingUri = recorder.uri;
-
-      if (!recordingUri) {
-        setParseError("No recorded audio was found.");
-        return;
-      }
-
-      setIsTranscribing(true);
-      setParsedTransaction(null);
-
-      const audioResponse = await fetch(recordingUri);
-      const audioBlob = await audioResponse.blob();
-      const recordedAudio = await blobToBase64(audioBlob);
-
-      const transcriptionResponse = await aiService.transcribeAudio(token, {
-        audioBase64: recordedAudio.base64,
-        mimeType: recordedAudio.mimeType,
-      });
-
-      const transcript = transcriptionResponse.data.transcript.trim();
-
-      if (!transcript) {
-        setParseError("No speech was detected. Please try again.");
-        return;
-      }
-
-      setPrompt(transcript);
-      await parsePromptText(transcript);
+      ExpoSpeechRecognitionModule.stop();
     } catch (error) {
-      if (error instanceof ApiError) {
+      if (error instanceof Error) {
         setParseError(getFriendlyVoiceErrorMessage(error.message));
       } else {
-        setParseError("Unable to transcribe your voice note right now.");
+        setParseError("Unable to start voice input right now.");
       }
-    } finally {
-      setIsTranscribing(false);
     }
   };
 
@@ -311,26 +292,17 @@ export default function AiAddTransactionScreen() {
               <View className="flex-1">
                 <PrimaryButton
                   label={
-                    recorderState.isRecording
-                      ? "Stop Recording"
-                      : isTranscribing
-                        ? "Transcribing..."
-                        : "Use Microphone"
+                    isListening ? "Stop Listening" : "Use Microphone"
                   }
                   variant="ghost"
                   onPress={handleMicPress}
-                  disabled={isTranscribing}
+                  disabled={false}
                 />
               </View>
-              {(recorderState.isRecording || isTranscribing) ? (
-                <View className="flex-row items-center gap-2">
-                  <ActivityIndicator color="#1f6f5f" />
-                  <Text className="text-sm font-medium text-forest-700">
-                    {recorderState.isRecording
-                      ? `${Math.round(recorderState.durationMillis / 1000)}s`
-                      : "Processing"}
-                  </Text>
-                </View>
+              {isListening ? (
+                <Text className="text-sm font-medium text-forest-700">
+                  Listening...
+                </Text>
               ) : null}
             </View>
 
