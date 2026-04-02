@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { useI18n } from "@/hooks/use-i18n";
 import type { Transaction } from "@/types/transaction";
 
 const typeTone = {
@@ -18,12 +19,19 @@ function TransactionCard({
   onDelete?: (transactionId: string) => void;
   isDeleting?: boolean;
 }) {
+  const { formatCurrency, formatDate, t } = useI18n();
   const amountPrefix = transaction.type === "expense" ? "-" : "+";
-  const dateLabel = new Date(transaction.date).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const dateLabel = formatDate(transaction.date);
+  const typeLabel =
+    transaction.type === "income"
+      ? t("transactionType.income")
+      : transaction.type === "expense"
+        ? t("transactionType.expense")
+        : t("transactionType.transfer");
+  const paymentMethodLabel =
+    transaction.paymentMethod === "cash"
+      ? t("paymentMethod.cash")
+      : t("paymentMethod.online");
 
   return (
     <View className="rounded-[24px] border border-sand-200 bg-white px-4 py-4">
@@ -34,14 +42,12 @@ function TransactionCard({
               {transaction.category}
             </Text>
             <View className={`rounded-full px-3 py-1 ${typeTone[transaction.type]}`}>
-              <Text className="text-xs font-semibold capitalize">
-                {transaction.type}
-              </Text>
+              <Text className="text-xs font-semibold">{typeLabel}</Text>
             </View>
           </View>
 
           <Text className="text-sm text-ink-700">
-            {transaction.paymentMethod.toUpperCase()} | {dateLabel}
+            {paymentMethodLabel} | {dateLabel}
           </Text>
 
           {transaction.description ? (
@@ -52,7 +58,7 @@ function TransactionCard({
 
           {transaction.person ? (
             <Text className="text-sm font-medium text-forest-700">
-              Person: {transaction.person}
+              {t("transactionCard.person")}: {transaction.person}
             </Text>
           ) : null}
 
@@ -63,14 +69,15 @@ function TransactionCard({
               className="mt-2 self-start rounded-full border border-coral-500/20 bg-coral-500/10 px-3 py-1"
             >
               <Text className="text-xs font-semibold text-coral-500">
-                {isDeleting ? "Deleting..." : "Delete"}
+                {isDeleting ? t("transactionCard.deleting") : t("transactionCard.delete")}
               </Text>
             </Pressable>
           ) : null}
         </View>
 
         <Text className="text-lg font-bold text-ink-900">
-          {amountPrefix}Rs. {transaction.amount.toFixed(2)}
+          {amountPrefix}
+          {formatCurrency(transaction.amount)}
         </Text>
       </View>
     </View>

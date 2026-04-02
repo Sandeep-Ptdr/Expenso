@@ -1,5 +1,7 @@
 import { Text, View } from "react-native";
 
+import { useI18n } from "@/hooks/use-i18n";
+
 type SummaryCardProps = {
   label: string;
   value: string;
@@ -17,6 +19,8 @@ export default function SummaryCard({
   value,
   accent,
 }: SummaryCardProps) {
+  const { t } = useI18n();
+
   return (
     <View className="flex-1 rounded-[24px] border border-sand-200 bg-white px-4 py-5">
       <Text className="text-sm font-medium text-ink-700">{label}</Text>
@@ -24,10 +28,10 @@ export default function SummaryCard({
       <View className={`mt-4 self-start rounded-full px-3 py-1 ${accentMap[accent]}`}>
         <Text className="text-xs font-semibold">
           {accent === "green"
-            ? "On track"
+            ? t("summary.onTrack")
             : accent === "orange"
-              ? "Needs attention"
-              : "Overview"}
+              ? t("summary.needsAttention")
+              : t("summary.overview")}
         </Text>
       </View>
     </View>

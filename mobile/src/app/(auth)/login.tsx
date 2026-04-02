@@ -8,11 +8,14 @@ import FormInput from "@/components/ui/FormInput";
 import Panel from "@/components/ui/Panel";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import Screen from "@/components/ui/Screen";
+import LanguageToggle from "@/components/ui/LanguageToggle";
 import { useAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/hooks/use-i18n";
 import { ApiError } from "@/services/api/http";
 import { LoginFormValues, loginSchema } from "@/validations/auth";
 
 export default function LoginScreen() {
+  const { t } = useI18n();
   const { login, isAuthenticated, isSubmitting } = useAuth();
   const [serverError, setServerError] = useState("");
   const {
@@ -40,7 +43,7 @@ export default function LoginScreen() {
         return;
       }
 
-      setServerError("Unable to sign in right now. Please try again.");
+      setServerError(t("auth.loginError"));
     }
   });
 
@@ -54,16 +57,18 @@ export default function LoginScreen() {
         className="flex-1 bg-sand-100"
         contentContainerClassName="flex-grow justify-center gap-6 px-5 py-4"
       >
+        <View className="items-end">
+          <LanguageToggle />
+        </View>
         <View className="gap-3">
           <Text className="text-xs font-semibold uppercase tracking-[2px] text-forest-700">
-            Expense Manager
+            {t("auth.appName")}
           </Text>
           <Text className="text-4xl font-bold leading-tight text-ink-900">
-            Money clarity, built for everyday life.
+            {t("auth.loginTitle")}
           </Text>
           <Text className="text-base leading-7 text-ink-700">
-            Sign in to manage income, expenses, and transfers from one calm,
-            mobile-first workspace.
+            {t("auth.loginSubtitle")}
           </Text>
         </View>
 
@@ -74,14 +79,14 @@ export default function LoginScreen() {
               name="email"
               render={({ field: { onChange, onBlur, value } }) => (
                 <FormInput
-                  label="Email"
+                  label={t("auth.email")}
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="email-address"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   value={value}
-                  placeholder="you@example.com"
+                  placeholder={t("auth.emailPlaceholder")}
                   error={errors.email?.message}
                 />
               )}
@@ -92,14 +97,14 @@ export default function LoginScreen() {
               name="password"
               render={({ field: { onChange, onBlur, value } }) => (
                 <FormInput
-                  label="Password"
+                  label={t("auth.password")}
                   autoCapitalize="none"
                   autoCorrect={false}
                   secureTextEntry
                   onBlur={onBlur}
                   onChangeText={onChange}
                   value={value}
-                  placeholder="Enter your password"
+                  placeholder={t("auth.passwordPlaceholder")}
                   error={errors.password?.message}
                 />
               )}
@@ -110,7 +115,7 @@ export default function LoginScreen() {
             ) : null}
 
             <PrimaryButton
-              label={isSubmitting ? "Signing In..." : "Sign In"}
+              label={isSubmitting ? t("auth.signingIn") : t("auth.signIn")}
               onPress={onSubmit}
               disabled={isSubmitting}
             />
@@ -119,7 +124,7 @@ export default function LoginScreen() {
 
         <Link href="/(auth)/register" asChild>
           <Text className="text-center text-base font-semibold text-forest-700">
-            Need an account? Create one
+            {t("auth.needAccount")}
           </Text>
         </Link>
       </ScrollView>

@@ -11,10 +11,12 @@ import PrimaryButton from "@/components/ui/PrimaryButton";
 import Screen from "@/components/ui/Screen";
 import TransactionCard from "@/features/transactions/components/TransactionCard";
 import { useTransactions } from "@/features/transactions/hooks/use-transactions";
+import { useI18n } from "@/hooks/use-i18n";
 import { useTransactionStore } from "@/store/transaction-store";
 import type { PaymentMethod, TransactionType } from "@/types/transaction";
 
 export default function TransactionsScreen() {
+  const { t } = useI18n();
   const [draftCategory, setDraftCategory] = useState("");
   const [draftType, setDraftType] = useState<TransactionType | "">("");
   const [draftPaymentMethod, setDraftPaymentMethod] = useState<
@@ -33,15 +35,15 @@ export default function TransactionsScreen() {
 
   const handleDeleteTransaction = (transactionId: string) => {
     Alert.alert(
-      "Delete transaction",
-      "This entry will be removed permanently.",
+      t("transactions.deleteTitle"),
+      t("transactions.deleteMessage"),
       [
         {
-          text: "Cancel",
+          text: t("transactions.cancel"),
           style: "cancel",
         },
         {
-          text: "Delete",
+          text: t("transactions.delete"),
           style: "destructive",
           onPress: async () => {
             try {
@@ -91,29 +93,34 @@ export default function TransactionsScreen() {
         }
       >
         <View className="gap-2">
-          <Text className="text-3xl font-bold text-ink-900">Transactions</Text>
+          <Text className="text-3xl font-bold text-ink-900">{t("transactions.title")}</Text>
           <Text className="text-base leading-7 text-ink-700">
-            Filter by category, type, date, and payment method to understand where
-            your money is moving.
+            {t("transactions.subtitle")}
           </Text>
         </View>
 
         <Panel>
           <View className="gap-4">
             <FormInput
-              label="Category"
-              placeholder="Food, Salary, Rent..."
+              label={t("transactions.category")}
+              placeholder={t("transactions.categoryPlaceholder")}
               value={draftCategory}
               onChangeText={setDraftCategory}
             />
 
             <View className="gap-2">
-              <Text className="text-sm font-semibold text-ink-900">Type</Text>
+              <Text className="text-sm font-semibold text-ink-900">{t("transactions.type")}</Text>
               <View className="flex-row flex-wrap gap-2">
                 {(["income", "expense", "transfer"] as const).map((value) => (
                   <FilterChip
                     key={value}
-                    label={value}
+                    label={
+                      value === "income"
+                        ? t("transactionType.income")
+                        : value === "expense"
+                          ? t("transactionType.expense")
+                          : t("transactionType.transfer")
+                    }
                     selected={draftType === value}
                     onPress={() =>
                       setDraftType(draftType === value ? "" : value)
@@ -125,13 +132,13 @@ export default function TransactionsScreen() {
 
             <View className="gap-2">
               <Text className="text-sm font-semibold text-ink-900">
-                Payment Method
+                {t("transactions.paymentMethod")}
               </Text>
               <View className="flex-row flex-wrap gap-2">
                 {(["cash", "online"] as const).map((value) => (
                   <FilterChip
                     key={value}
-                    label={value}
+                    label={value === "cash" ? t("paymentMethod.cash") : t("paymentMethod.online")}
                     selected={draftPaymentMethod === value}
                     onPress={() =>
                       setDraftPaymentMethod(
@@ -146,8 +153,8 @@ export default function TransactionsScreen() {
             <View className="flex-row gap-3">
               <View className="flex-1">
                 <FormInput
-                  label="Start Date"
-                  placeholder="YYYY-MM-DD"
+                  label={t("transactions.startDate")}
+                  placeholder={t("transactions.datePlaceholder")}
                   autoCapitalize="none"
                   value={draftStartDate}
                   onChangeText={setDraftStartDate}
@@ -155,8 +162,8 @@ export default function TransactionsScreen() {
               </View>
               <View className="flex-1">
                 <FormInput
-                  label="End Date"
-                  placeholder="YYYY-MM-DD"
+                  label={t("transactions.endDate")}
+                  placeholder={t("transactions.datePlaceholder")}
                   autoCapitalize="none"
                   value={draftEndDate}
                   onChangeText={setDraftEndDate}
@@ -166,11 +173,11 @@ export default function TransactionsScreen() {
 
             <View className="flex-row gap-3">
               <View className="flex-1">
-                <PrimaryButton label="Apply Filters" onPress={applyFilters} />
+                <PrimaryButton label={t("transactions.applyFilters")} onPress={applyFilters} />
               </View>
               <View className="flex-1">
                 <PrimaryButton
-                  label="Clear"
+                  label={t("transactions.clear")}
                   variant="ghost"
                   onPress={clearFilters}
                 />
@@ -181,23 +188,26 @@ export default function TransactionsScreen() {
 
         <View className="gap-3">
           <Text className="text-lg font-semibold text-ink-900">
-            {transactions.length} transaction{transactions.length === 1 ? "" : "s"}
+            {t("transactions.count", {
+              count: transactions.length,
+              s: transactions.length === 1 ? "" : "s",
+            })}
           </Text>
 
           {isLoading ? (
-            <LoadingCard label="Loading matching transactions..." />
+            <LoadingCard label={t("transactions.loading")} />
           ) : error ? (
             <FeedbackCard
-              title="Unable to load transactions"
+              title={t("transactions.loadError")}
               message={error}
               tone="error"
-              actionLabel="Try Again"
+              actionLabel={t("dashboard.tryAgain")}
               onAction={fetchFilteredTransactions}
             />
           ) : transactions.length === 0 ? (
             <FeedbackCard
-              title="No matching results"
-              message="Try broadening your filters or add a new transaction that matches this view."
+              title={t("transactions.noResultsTitle")}
+              message={t("transactions.noResultsMessage")}
             />
           ) : (
             transactions.map((transaction) => (

@@ -10,7 +10,9 @@ import SummaryCard from "@/features/dashboard/components/SummaryCard";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import Screen from "@/components/ui/Screen";
 import TransactionCard from "@/features/transactions/components/TransactionCard";
+import LanguageToggle from "@/components/ui/LanguageToggle";
 import { useAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/hooks/use-i18n";
 import { aiService } from "@/services/ai/ai.service";
 import {
   getCachedMonthlyInsight,
@@ -20,20 +22,21 @@ import { ApiError } from "@/services/api/http";
 import { useTransactionStore } from "@/store/transaction-store";
 import type { MonthlyInsightsResponse } from "@/types/transaction";
 
-const getFriendlyInsightsErrorMessage = (message: string) => {
+const getFriendlyInsightsErrorMessage = (message: string, busyMessage: string) => {
   const normalizedMessage = message.toLowerCase();
 
   if (
     normalizedMessage.includes("quota exceeded") ||
     normalizedMessage.includes("rate limit")
   ) {
-    return "AI insight is temporarily busy right now. Please wait a moment and try again.";
+    return busyMessage;
   }
 
   return message;
 };
 
 export default function DashboardScreen() {
+  const { formatCurrency, t } = useI18n();
   const router = useRouter();
   const { user, logout, token } = useAuth();
   const transactions = useTransactionStore((state) => state.overviewTransactions);
@@ -89,13 +92,13 @@ export default function DashboardScreen() {
       setInsights(null);
       setInsightsError(
         loadError instanceof ApiError
-          ? getFriendlyInsightsErrorMessage(loadError.message)
-          : "Unable to load AI insights right now."
+          ? getFriendlyInsightsErrorMessage(loadError.message, t("dashboard.aiBusy"))
+          : t("dashboard.aiInsightFallback")
       );
     } finally {
       setIsInsightsLoading(false);
     }
-  }, [getCurrentInsightCacheKey, token]);
+  }, [getCurrentInsightCacheKey, t, token]);
 
   const hydrateMonthlyInsightsFromCache = useCallback(() => {
     const cachedInsights = getCachedMonthlyInsight(getCurrentInsightCacheKey());
@@ -147,67 +150,69 @@ export default function DashboardScreen() {
         <View className="flex-row items-start justify-between gap-4">
           <View className="flex-1 gap-2">
             <Text className="text-sm font-semibold uppercase tracking-[2px] text-forest-700">
-              Welcome back
+              {t("dashboard.welcome")}
             </Text>
             <Text className="text-3xl font-bold text-ink-900">
-              {user?.name || "Dashboard"}
+              {user?.name || t("dashboard.defaultTitle")}
               
             </Text>
           </View>
 
-          <View className="w-28">
-            <PrimaryButton
-              label="Logout"
-              variant="ghost"
-              onPress={async () => {
-                useTransactionStore.getState().reset();
-                await logout();
-              }}
-            />
+          <View className="items-end gap-2">
+            <LanguageToggle />
+            <View className="w-auto">
+              <PrimaryButton
+                label={t("dashboard.logout")}
+                variant="ghost"
+                onPress={async () => {
+                  useTransactionStore.getState().reset();
+                  await logout();
+                }}
+              />
+            </View>
           </View>
         </View>
 
         <View className="gap-2">
           <Text className="text-base leading-7 text-ink-700">
-            Track income, expenses, and transfers with a quick summary of where your
-            money stands today.
+            {t("dashboard.summary")}
           </Text>
         </View>
 
         <View className="flex-row gap-3">
           <SummaryCard
-            label="Income"
-            value={`Rs. ${income.toFixed(2)}`}
+            label={t("dashboard.income")}
+            value={formatCurrency(income)}
             accent="green"
           />
           <SummaryCard
-            label="Expense"
-            value={`Rs. ${expense.toFixed(2)}`}
+            label={t("dashboard.expense")}
+            value={formatCurrency(expense)}
             accent="orange"
           />
         </View>
 
         <SummaryCard
-          label="Balance"
-          value={`Rs. ${balance.toFixed(2)}`}
+          label={t("dashboard.balance")}
+          value={formatCurrency(balance)}
           accent="neutral"
         />
 
         <Panel>
           <Text className="text-lg font-semibold text-ink-900">
-            Payment Method Split
+            {t("dashboard.paymentMethodSplit")}
           </Text>
           <View className="mt-4 flex-row gap-3">
             <View className="flex-1 rounded-[24px] bg-sand-50 px-4 py-4">
-              <Text className="text-sm font-medium text-ink-700">Cash</Text>
+              <Text className="text-sm font-medium text-ink-700">{t("dashboard.cash")}</Text>
               <Text className="mt-2 text-2xl font-bold text-ink-900">
-                Rs. {cashTotal.toFixed(2)}
+                {formatCurrency(cashTotal)}
               </Text>
             </View>
             <View className="flex-1 rounded-[24px] bg-sand-50 px-4 py-4">
-              <Text className="text-sm font-medium text-ink-700">Online</Text>
+              <Text className="text-sm font-medium text-ink-700">{t("dashboard.online")}</Text>
               <Text className="mt-2 text-2xl font-bold text-ink-900">
-                Rs. {onlineTotal.toFixed(2)}
+                {formatCurrency(onlineTotal)}
               </Text>
             </View>
           </View>
@@ -216,26 +221,26 @@ export default function DashboardScreen() {
         <Panel>
           <View className="mb-4 flex-row items-center justify-between">
             <Text className="text-lg font-semibold text-ink-900">
-              AI Monthly Insight
+              {t("dashboard.aiInsight")}
             </Text>
             {insights ? (
               <Text
                 className="text-sm font-semibold text-forest-700"
                 onPress={() => loadMonthlyInsights(true)}
               >
-                Refresh
+                {t("dashboard.refresh")}
               </Text>
             ) : null}
           </View>
 
           {isInsightsLoading ? (
-            <LoadingCard label="Generating your monthly AI insight..." />
+            <LoadingCard label={t("dashboard.generatingInsight")} />
           ) : insightsError ? (
             <FeedbackCard
-              title="Unable to load AI insight"
+              title={t("dashboard.aiInsightError")}
               message={insightsError}
               tone="error"
-              actionLabel="Try Again"
+              actionLabel={t("dashboard.tryAgain")}
               onAction={() => loadMonthlyInsights(true)}
             />
           ) : insights ? (
@@ -251,7 +256,7 @@ export default function DashboardScreen() {
 
               <View className="rounded-[24px] bg-sand-50 px-4 py-4">
                 <Text className="text-sm font-semibold text-ink-900">
-                  Suggested action
+                  {t("dashboard.suggestedAction")}
                 </Text>
                 <Text className="mt-2 text-base leading-7 text-ink-700">
                   {insights.insight.suggestion}
@@ -260,11 +265,11 @@ export default function DashboardScreen() {
 
               <View className="gap-2">
                 <Text className="text-sm font-semibold text-ink-900">
-                  Top expense categories this month
+                  {t("dashboard.topCategories")}
                 </Text>
                 {insights.topCategories.length === 0 ? (
                   <Text className="text-base text-ink-700">
-                    No expense categories yet for this month.
+                    {t("dashboard.noExpenseCategories")}
                   </Text>
                 ) : (
                   insights.topCategories.map((category) => (
@@ -276,7 +281,7 @@ export default function DashboardScreen() {
                         {category.category}
                       </Text>
                       <Text className="text-base font-semibold text-forest-700">
-                        Rs. {category.total.toFixed(2)}
+                        {formatCurrency(category.total)}
                       </Text>
                     </View>
                   ))
@@ -284,19 +289,22 @@ export default function DashboardScreen() {
               </View>
 
               <Text className="text-sm font-medium text-forest-700">
-                Based on {insights.transactionsAnalyzed} transaction
-                {insights.transactionsAnalyzed === 1 ? "" : "s"} from{" "}
-                {insights.month}/{insights.year}.
+                {t("dashboard.transactionsAnalyzed", {
+                  count: insights.transactionsAnalyzed,
+                  s: insights.transactionsAnalyzed === 1 ? "" : "s",
+                  month: insights.month,
+                  year: insights.year,
+                })}
               </Text>
             </View>
           ) : (
             <View className="gap-4">
               <FeedbackCard
-                title="No insights generated yet"
-                message="Generate an AI monthly insight when you want a summary. The result will be cached for a while so repeated visits do not consume quota immediately."
+                title={t("dashboard.noInsightsTitle")}
+                message={t("dashboard.noInsightsMessage")}
               />
               <PrimaryButton
-                label="Generate AI Insight"
+                label={t("dashboard.generateInsight")}
                 onPress={() => loadMonthlyInsights(true)}
               />
             </View>
@@ -306,14 +314,14 @@ export default function DashboardScreen() {
         <View className="flex-row gap-3">
           <View className="flex-1">
             <PrimaryButton
-              label="AI quick add"
+              label={t("dashboard.aiQuickAdd")}
               variant="ghost"
               onPress={() => router.push("/(app)/ai-add-transaction")}
             />
           </View>
           <View className="flex-1">
             <PrimaryButton
-              label="Add transaction"
+              label={t("dashboard.addTransaction")}
               onPress={() => router.push("/(app)/add-transaction")}
             />
           </View>
@@ -322,30 +330,30 @@ export default function DashboardScreen() {
         <Panel>
           <View className="mb-4 flex-row items-center justify-between">
             <Text className="text-lg font-semibold text-ink-900">
-              Recent Transactions
+              {t("dashboard.recentTransactions")}
             </Text>
             <Text
               className="text-sm font-semibold text-forest-700"
               onPress={() => router.push("/(app)/(tabs)/transactions")}
             >
-              View all
+              {t("dashboard.viewAll")}
             </Text>
           </View>
 
           {isLoading ? (
-            <LoadingCard label="Refreshing your latest transactions..." />
+            <LoadingCard label={t("dashboard.refreshingTransactions")} />
           ) : error ? (
             <FeedbackCard
-              title="Unable to load overview"
+              title={t("dashboard.overviewError")}
               message={error}
               tone="error"
-              actionLabel="Try Again"
+              actionLabel={t("dashboard.tryAgain")}
               onAction={fetchOverviewTransactions}
             />
           ) : recentTransactions.length === 0 ? (
             <FeedbackCard
-              title="No transactions yet"
-              message="Add your first income or expense to start seeing trends and balances."
+              title={t("dashboard.noTransactionsTitle")}
+              message={t("dashboard.noTransactionsMessage")}
             />
           ) : (
             <View className="gap-3">

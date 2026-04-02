@@ -8,11 +8,14 @@ import FormInput from "@/components/ui/FormInput";
 import Panel from "@/components/ui/Panel";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import Screen from "@/components/ui/Screen";
+import LanguageToggle from "@/components/ui/LanguageToggle";
 import { useAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/hooks/use-i18n";
 import { ApiError } from "@/services/api/http";
 import { RegisterFormValues, registerSchema } from "@/validations/auth";
 
 export default function RegisterScreen() {
+  const { t } = useI18n();
   const { register, isAuthenticated, isSubmitting } = useAuth();
   const [serverError, setServerError] = useState("");
   const {
@@ -42,7 +45,7 @@ export default function RegisterScreen() {
         return;
       }
 
-      setServerError("Unable to create your account right now. Please try again.");
+      setServerError(t("auth.registerError"));
     }
   });
 
@@ -56,13 +59,15 @@ export default function RegisterScreen() {
         className="flex-1 bg-sand-100"
         contentContainerClassName="flex-grow justify-center gap-6 px-5 py-4"
       >
+        <View className="items-end">
+          <LanguageToggle />
+        </View>
         <View className="gap-3">
           <Text className="text-3xl font-bold leading-tight text-ink-900">
-            Create your account
+            {t("auth.registerTitle")}
           </Text>
           <Text className="text-base leading-7 text-ink-700">
-            Create your account and start tracking your full money picture from day
-            one.
+            {t("auth.registerSubtitle")}
           </Text>
         </View>
 
@@ -73,12 +78,12 @@ export default function RegisterScreen() {
               name="name"
               render={({ field: { onChange, onBlur, value } }) => (
                 <FormInput
-                  label="Full Name"
+                  label={t("auth.fullName")}
                   autoCapitalize="words"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   value={value}
-                  placeholder="Your full name"
+                  placeholder={t("auth.fullNamePlaceholder")}
                   error={errors.name?.message}
                 />
               )}
@@ -89,14 +94,14 @@ export default function RegisterScreen() {
               name="email"
               render={({ field: { onChange, onBlur, value } }) => (
                 <FormInput
-                  label="Email"
+                  label={t("auth.email")}
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="email-address"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   value={value}
-                  placeholder="you@example.com"
+                  placeholder={t("auth.emailPlaceholder")}
                   error={errors.email?.message}
                 />
               )}
@@ -107,14 +112,14 @@ export default function RegisterScreen() {
               name="password"
               render={({ field: { onChange, onBlur, value } }) => (
                 <FormInput
-                  label="Password"
+                  label={t("auth.password")}
                   autoCapitalize="none"
                   autoCorrect={false}
                   secureTextEntry
                   onBlur={onBlur}
                   onChangeText={onChange}
                   value={value}
-                  placeholder="Create a secure password"
+                  placeholder={t("auth.passwordCreatePlaceholder")}
                   error={errors.password?.message}
                 />
               )}
@@ -125,7 +130,9 @@ export default function RegisterScreen() {
             ) : null}
 
             <PrimaryButton
-              label={isSubmitting ? "Creating Account..." : "Create Account"}
+              label={
+                isSubmitting ? t("auth.creatingAccount") : t("auth.createAccount")
+              }
               onPress={onSubmit}
               disabled={isSubmitting}
             />
@@ -134,7 +141,7 @@ export default function RegisterScreen() {
 
         <Link href="/(auth)/login" asChild>
           <Text className="text-center text-base font-semibold text-forest-700">
-            Already have an account? Sign in
+            {t("auth.haveAccount")}
           </Text>
         </Link>
       </ScrollView>
