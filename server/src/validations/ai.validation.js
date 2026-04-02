@@ -16,6 +16,11 @@ const askAssistantValidation = [
     .withMessage("Question is required.")
     .isLength({ max: 500 })
     .withMessage("Question must be at most 500 characters long."),
+  body("resetContext")
+    .optional()
+    .isBoolean()
+    .withMessage("resetContext must be true or false.")
+    .toBoolean(),
 ];
 
 const monthlyInsightsValidation = [

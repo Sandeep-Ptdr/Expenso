@@ -39,7 +39,8 @@
       ],
       "expo-secure-store",
       "expo-audio",
-      "expo-speech-recognition"
+      "expo-speech-recognition",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

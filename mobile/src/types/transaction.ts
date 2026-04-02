@@ -78,6 +78,14 @@ export type ParseTransactionTextResponse = {
 export type AskAssistantPayload = {
   question: string;
   timezone?: string;
+  resetContext?: boolean;
+};
+
+export type AssistantMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
 };
 
 export type AskAssistantResponse = {
@@ -86,6 +94,15 @@ export type AskAssistantResponse = {
   data: {
     answer: string;
     transactionsAnalyzed: number;
+    messages: AssistantMessage[];
+  };
+};
+
+export type AssistantConversationResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    messages: AssistantMessage[];
   };
 };
 

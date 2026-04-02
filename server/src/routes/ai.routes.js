@@ -1,6 +1,8 @@
 const express = require("express");
 const {
   askAssistant,
+  clearAssistantConversation,
+  getAssistantConversation,
   getMonthlyInsights,
   parseTransactionText,
   transcribeAudio,
@@ -18,6 +20,8 @@ const router = express.Router();
 
 router.use(protect);
 
+router.get("/conversation", getAssistantConversation);
+router.delete("/conversation", clearAssistantConversation);
 router.post("/ask", askAssistantValidation, validateRequest, askAssistant);
 router.post(
   "/monthly-insights",

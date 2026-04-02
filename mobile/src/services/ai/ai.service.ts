@@ -1,6 +1,7 @@
 import { http } from "@/services/api/http";
 import type {
   AskAssistantPayload,
+  AssistantConversationResponse,
   AskAssistantResponse,
   MonthlyInsightsPayload,
   MonthlyInsightsResponse,
@@ -11,6 +12,20 @@ import type {
 } from "@/types/transaction";
 
 export const aiService = {
+  getAssistantConversation(token: string) {
+    return http<AssistantConversationResponse>("/ai/conversation", {
+      method: "GET",
+      token,
+    });
+  },
+
+  clearAssistantConversation(token: string) {
+    return http<AssistantConversationResponse>("/ai/conversation", {
+      method: "DELETE",
+      token,
+    });
+  },
+
   askAssistant(token: string, payload: AskAssistantPayload) {
     return http<AskAssistantResponse>("/ai/ask", {
       method: "POST",

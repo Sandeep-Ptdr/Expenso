@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { Alert } from "react-native";
+import { Alert, Pressable } from "react-native";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 
 import FeedbackCard from "@/components/ui/FeedbackCard";
 import FilterChip from "@/components/ui/FilterChip";
@@ -15,8 +18,26 @@ import { useI18n } from "@/hooks/use-i18n";
 import { useTransactionStore } from "@/store/transaction-store";
 import type { PaymentMethod, TransactionType } from "@/types/transaction";
 
+const parseDateInputValue = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return new Date();
+  }
+
+  return new Date(year, month - 1, day);
+};
+
+const formatDateInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
 export default function TransactionsScreen() {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const [draftCategory, setDraftCategory] = useState("");
   const [draftType, setDraftType] = useState<TransactionType | "">("");
   const [draftPaymentMethod, setDraftPaymentMethod] = useState<
@@ -24,6 +45,9 @@ export default function TransactionsScreen() {
   >("");
   const [draftStartDate, setDraftStartDate] = useState("");
   const [draftEndDate, setDraftEndDate] = useState("");
+  const [activeDateField, setActiveDateField] = useState<"start" | "end" | null>(
+    null
+  );
   const { transactions, isLoading, error } = useTransactions();
   const setFilters = useTransactionStore((state) => state.setFilters);
   const clearStoreFilters = useTransactionStore((state) => state.clearFilters);
@@ -77,6 +101,30 @@ export default function TransactionsScreen() {
     setDraftEndDate("");
     clearStoreFilters();
     fetchFilteredTransactions();
+  };
+
+  const handleDateChange = (
+    event: DateTimePickerEvent,
+    selectedValue?: Date
+  ) => {
+    if (event.type === "dismissed") {
+      setActiveDateField(null);
+      return;
+    }
+
+    if (selectedValue) {
+      const formattedDate = formatDateInputValue(selectedValue);
+
+      if (activeDateField === "start") {
+        setDraftStartDate(formattedDate);
+      }
+
+      if (activeDateField === "end") {
+        setDraftEndDate(formattedDate);
+      }
+    }
+
+    setActiveDateField(null);
   };
 
   return (
@@ -152,24 +200,76 @@ export default function TransactionsScreen() {
 
             <View className="flex-row gap-3">
               <View className="flex-1">
-                <FormInput
-                  label={t("transactions.startDate")}
-                  placeholder={t("transactions.datePlaceholder")}
-                  autoCapitalize="none"
-                  value={draftStartDate}
-                  onChangeText={setDraftStartDate}
-                />
+                <View className="gap-2">
+                  <Text className="text-sm font-semibold text-ink-900">
+                    {t("transactions.startDate")}
+                  </Text>
+                  <Pressable
+                    onPress={() => setActiveDateField("start")}
+                    className="rounded-2xl border border-sand-300 bg-white px-4 py-4"
+                  >
+                    <Text
+                      className={
+                        draftStartDate ? "text-base text-ink-900" : "text-base text-[#8d877e]"
+                      }
+                    >
+                      {draftStartDate
+                        ? parseDateInputValue(draftStartDate).toLocaleDateString(
+                            language === "hi" ? "hi-IN" : "en-IN",
+                            {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            }
+                          )
+                        : t("transactions.datePlaceholder")}
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
               <View className="flex-1">
-                <FormInput
-                  label={t("transactions.endDate")}
-                  placeholder={t("transactions.datePlaceholder")}
-                  autoCapitalize="none"
-                  value={draftEndDate}
-                  onChangeText={setDraftEndDate}
-                />
+                <View className="gap-2">
+                  <Text className="text-sm font-semibold text-ink-900">
+                    {t("transactions.endDate")}
+                  </Text>
+                  <Pressable
+                    onPress={() => setActiveDateField("end")}
+                    className="rounded-2xl border border-sand-300 bg-white px-4 py-4"
+                  >
+                    <Text
+                      className={
+                        draftEndDate ? "text-base text-ink-900" : "text-base text-[#8d877e]"
+                      }
+                    >
+                      {draftEndDate
+                        ? parseDateInputValue(draftEndDate).toLocaleDateString(
+                            language === "hi" ? "hi-IN" : "en-IN",
+                            {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            }
+                          )
+                        : t("transactions.datePlaceholder")}
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
+
+            {activeDateField ? (
+              <DateTimePicker
+                value={
+                  activeDateField === "start"
+                    ? parseDateInputValue(draftStartDate)
+                    : parseDateInputValue(draftEndDate)
+                }
+                mode="date"
+                display="default"
+                onChange={handleDateChange}
+                maximumDate={new Date(2100, 11, 31)}
+              />
+            ) : null}
 
             <View className="flex-row gap-3">
               <View className="flex-1">

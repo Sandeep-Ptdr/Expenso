@@ -19,13 +19,13 @@ type AuthStore = {
 };
 
 const persistSession = async (token: string, user: AuthUser) => {
-  await storage.setItem(AUTH_TOKEN_KEY, token);
-
   useAuthStore.setState({
     token,
     user,
     isAuthenticated: true,
   });
+
+  await storage.setItem(AUTH_TOKEN_KEY, token);
 };
 
 export const useAuthStore = create<AuthStore>((set) => ({
@@ -73,7 +73,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
     try {
       const response = await authService.login(payload);
-      await persistSession(response.data.token, response.data.user);
+      persistSession(response.data.token, response.data.user).catch(() => {
+        useAuthStore.setState({
+          token: null,
+          user: null,
+          isAuthenticated: false,
+        });
+      });
     } finally {
       set({ isSubmitting: false });
     }
@@ -84,7 +90,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
     try {
       const response = await authService.register(payload);
-      await persistSession(response.data.token, response.data.user);
+      persistSession(response.data.token, response.data.user).catch(() => {
+        useAuthStore.setState({
+          token: null,
+          user: null,
+          isAuthenticated: false,
+        });
+      });
     } finally {
       set({ isSubmitting: false });
     }

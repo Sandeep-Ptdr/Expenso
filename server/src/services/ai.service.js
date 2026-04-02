@@ -1,9 +1,11 @@
 const AppError = require("../utils/app-error");
 const env = require("../config/env");
+const AssistantConversation = require("../models/assistant-conversation.model");
 const Transaction = require("../models/transaction.model");
 
 const OPENROUTER_API_URL =
   "https://openrouter.ai/api/v1/chat/completions";
+const MAX_STORED_MESSAGES = 20;
 
 const parseJsonResponse = (content) => {
   try {
@@ -66,6 +68,87 @@ const formatTransactionsForAssistant = (transactions) => {
     description: transaction.description,
     date: transaction.date,
     person: transaction.person,
+  }));
+};
+
+const summarizeTransactions = (transactions) => {
+  const totals = transactions.reduce(
+    (summary, transaction) => {
+      if (transaction.type === "income") {
+        summary.income += transaction.amount;
+      }
+
+      if (transaction.type === "expense") {
+        summary.expense += transaction.amount;
+      }
+
+      if (transaction.type === "transfer") {
+        summary.transfer += transaction.amount;
+      }
+
+      summary.paymentMethod[transaction.paymentMethod] += transaction.amount;
+      summary.byType[transaction.type] += 1;
+
+      if (transaction.type === "expense") {
+        summary.expenseCategories[transaction.category] =
+          (summary.expenseCategories[transaction.category] || 0) +
+          transaction.amount;
+      }
+
+      if (transaction.type === "income") {
+        summary.incomeCategories[transaction.category] =
+          (summary.incomeCategories[transaction.category] || 0) +
+          transaction.amount;
+      }
+
+      return summary;
+    },
+    {
+      income: 0,
+      expense: 0,
+      transfer: 0,
+      paymentMethod: {
+        cash: 0,
+        online: 0,
+      },
+      byType: {
+        income: 0,
+        expense: 0,
+        transfer: 0,
+      },
+      expenseCategories: {},
+      incomeCategories: {},
+    }
+  );
+
+  return {
+    ...totals,
+    balance: totals.income - totals.expense,
+    transactionCount: transactions.length,
+    dateRange:
+      transactions.length > 0
+        ? {
+            newest: transactions[0].date,
+            oldest: transactions[transactions.length - 1].date,
+          }
+        : null,
+    topExpenseCategories: Object.entries(totals.expenseCategories)
+      .map(([category, total]) => ({ category, total }))
+      .sort((left, right) => right.total - left.total)
+      .slice(0, 5),
+    topIncomeCategories: Object.entries(totals.incomeCategories)
+      .map(([category, total]) => ({ category, total }))
+      .sort((left, right) => right.total - left.total)
+      .slice(0, 5),
+  };
+};
+
+const normalizeConversationMessages = (messages) => {
+  return (messages || []).map((message) => ({
+    id: String(message._id),
+    role: message.role,
+    content: message.content,
+    createdAt: message.createdAt,
   }));
 };
 
@@ -152,6 +235,28 @@ const generateOpenRouterCompletion = async ({
   return extractOpenRouterText(data);
 };
 
+const getAssistantConversation = async ({ userId }) => {
+  const conversation = await AssistantConversation.findOne({
+    user: userId,
+  }).lean();
+
+  return {
+    messages: normalizeConversationMessages(conversation?.messages || []),
+  };
+};
+
+const clearAssistantConversation = async ({ userId }) => {
+  await AssistantConversation.findOneAndUpdate(
+    { user: userId },
+    { $set: { messages: [] } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  return {
+    messages: [],
+  };
+};
+
 const transcribeAudio = async ({ audioBase64, mimeType }) => {
   return generateOpenRouterCompletion({
     model: env.openRouterAudioModel,
@@ -219,42 +324,110 @@ const parseTransactionText = async ({ text, timezone }) => {
   return normalizeParsedTransaction(parsedTransaction);
 };
 
-const askAssistant = async ({ userId, question, timezone }) => {
+const askAssistant = async ({ userId, question, timezone, resetContext }) => {
+  const trimmedQuestion = String(question || "").trim();
+
+  if (!trimmedQuestion) {
+    throw new AppError("Question is required.", 400);
+  }
+
+  if (resetContext) {
+    await clearAssistantConversation({ userId });
+  }
+
   const transactions = await Transaction.find({ user: userId })
     .sort({ date: -1, createdAt: -1 })
-    .limit(250)
     .lean();
+  const recentTransactions = transactions.slice(0, 120);
+  const transactionSummary = summarizeTransactions(transactions);
+  const existingConversation = await AssistantConversation.findOne({
+    user: userId,
+  });
+  const previousMessages = resetContext
+    ? []
+    : normalizeConversationMessages(existingConversation?.messages || []).slice(
+        -12
+      );
 
   const today = new Date().toISOString().slice(0, 10);
   const transactionContext = JSON.stringify(
-    formatTransactionsForAssistant(transactions),
+    formatTransactionsForAssistant(recentTransactions),
     null,
     2
   );
+  const transactionSummaryContext = JSON.stringify(transactionSummary, null, 2);
+  const conversationMessages = previousMessages.map((message) => ({
+    role: message.role,
+    content: message.content,
+  }));
+  const answer = await generateOpenRouterCompletion({
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are an advanced personal finance assistant for an expense tracker. " +
+          "Answer using only the provided transaction history, summary statistics, and prior chat context. " +
+          "You remember previous turns in this conversation and should answer follow-up questions consistently. " +
+          "Use the full financial context, including income, expenses, transfers, categories, payment methods, cash vs online, dates, trends, and balances. " +
+          "If the data is insufficient, say that clearly. " +
+          "Do not invent transactions. " +
+          "Be practical, precise, and easy to understand. " +
+          "When useful, include totals, category names, comparisons, and short explanations.",
+      },
+      {
+        role: "user",
+        content:
+          `Timezone: ${timezone}\n` +
+          `Current date: ${today}\n` +
+          `Full transaction summary:\n${transactionSummaryContext}\n\n` +
+          `Recent detailed transactions:\n${transactionContext}`,
+      },
+      ...conversationMessages,
+      {
+        role: "user",
+        content: trimmedQuestion,
+      },
+    ],
+  });
+
+  const nextMessages = [
+    ...previousMessages,
+    {
+      id: `local-user-${Date.now()}`,
+      role: "user",
+      content: trimmedQuestion,
+      createdAt: new Date(),
+    },
+    {
+      id: `local-assistant-${Date.now() + 1}`,
+      role: "assistant",
+      content: answer,
+      createdAt: new Date(),
+    },
+  ].slice(-MAX_STORED_MESSAGES);
+
+  const persistedConversation = await AssistantConversation.findOneAndUpdate(
+    { user: userId },
+    {
+      $set: {
+        messages: nextMessages.map((message) => ({
+          role: message.role,
+          content: message.content,
+          createdAt: message.createdAt,
+        })),
+      },
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true,
+    }
+  ).lean();
 
   return {
-    answer: await generateOpenRouterCompletion({
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a concise personal finance assistant for an expense tracker. " +
-            "Answer using only the provided transaction data. " +
-            "If the data is insufficient, say that clearly. " +
-            "Do not invent transactions. " +
-            "Keep answers practical and short, and when useful include totals and category names.",
-        },
-        {
-          role: "user",
-          content:
-            `Timezone: ${timezone}\n` +
-            `Current date: ${today}\n` +
-            `User question: ${question}\n\n` +
-            `Transactions:\n${transactionContext}`,
-        },
-      ],
-    }),
+    answer,
     transactionsAnalyzed: transactions.length,
+    messages: normalizeConversationMessages(persistedConversation?.messages || []),
   };
 };
 
@@ -349,6 +522,8 @@ const getMonthlyInsights = async ({ userId, timezone, month, year }) => {
 };
 
 module.exports = {
+  clearAssistantConversation,
+  getAssistantConversation,
   askAssistant,
   getMonthlyInsights,
   parseTransactionText,

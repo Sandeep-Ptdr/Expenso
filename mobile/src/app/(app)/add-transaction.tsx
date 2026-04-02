@@ -2,7 +2,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
 import { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 
 import FilterChip from "@/components/ui/FilterChip";
 import FormInput from "@/components/ui/FormInput";
@@ -27,8 +30,26 @@ const aiExamples = [
   "Sent 1500 online to Rahul for rent",
 ];
 
+const parseDateInputValue = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    return new Date();
+  }
+
+  return new Date(year, month - 1, day);
+};
+
+const formatDateInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
 export default function AddTransactionScreen() {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
   const router = useRouter();
   const { token } = useAuth();
   const createTransaction = useTransactionStore((state) => state.createTransaction);
@@ -39,6 +60,7 @@ export default function AddTransactionScreen() {
   const [aiConfidence, setAiConfidence] = useState<number | null>(null);
   const [aiMissingFields, setAiMissingFields] = useState<string[]>([]);
   const [isParsing, setIsParsing] = useState(false);
+  const [isDatePickerVisible, setIsDatePickerVisible] = useState(false);
   const [serverError, setServerError] = useState("");
   const {
     control,
@@ -61,6 +83,24 @@ export default function AddTransactionScreen() {
 
   const selectedType = watch("type");
   const selectedPaymentMethod = watch("paymentMethod");
+
+  const handleDateChange = (
+    event: DateTimePickerEvent,
+    selectedValue?: Date
+  ) => {
+    if (event.type === "dismissed") {
+      setIsDatePickerVisible(false);
+      return;
+    }
+
+    if (selectedValue) {
+      setValue("date", formatDateInputValue(selectedValue), {
+        shouldValidate: true,
+      });
+    }
+
+    setIsDatePickerVisible(false);
+  };
 
   const handleParseTransactionText = async () => {
     if (!token) {
@@ -354,16 +394,41 @@ export default function AddTransactionScreen() {
             <Controller
               control={control}
               name="date"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <FormInput
-                  label={t("add.date")}
-                  autoCapitalize="none"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                  placeholder={t("transactions.datePlaceholder")}
-                  error={errors.date?.message}
-                />
+              render={({ field: { value } }) => (
+                <View className="gap-2">
+                  <Text className="text-sm font-semibold text-ink-900">
+                    {t("add.date")}
+                  </Text>
+                  <Pressable
+                    onPress={() => setIsDatePickerVisible(true)}
+                    className="rounded-2xl border border-sand-300 bg-white px-4 py-4"
+                  >
+                    <Text className="text-base text-ink-900">
+                      {parseDateInputValue(value).toLocaleDateString(
+                        language === "hi" ? "hi-IN" : "en-IN",
+                        {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        }
+                      )}
+                    </Text>
+                  </Pressable>
+                  {errors.date?.message ? (
+                    <Text className="text-sm font-medium text-coral-500">
+                      {errors.date.message}
+                    </Text>
+                  ) : null}
+                  {isDatePickerVisible ? (
+                    <DateTimePicker
+                      value={parseDateInputValue(value)}
+                      mode="date"
+                      display="default"
+                      onChange={handleDateChange}
+                      maximumDate={new Date(2100, 11, 31)}
+                    />
+                  ) : null}
+                </View>
               )}
             />
 
