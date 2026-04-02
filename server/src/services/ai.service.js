@@ -76,22 +76,33 @@ const summarizeTransactions = (transactions) => {
     (summary, transaction) => {
       if (transaction.type === "income") {
         summary.income += transaction.amount;
+        summary.paymentMethod.income[transaction.paymentMethod] += transaction.amount;
+        summary.paymentMethod.net[transaction.paymentMethod] += transaction.amount;
       }
 
       if (transaction.type === "expense") {
         summary.expense += transaction.amount;
+        summary.outgoing += transaction.amount;
+        summary.paymentMethod.outgoing[transaction.paymentMethod] +=
+          transaction.amount;
+        summary.paymentMethod.net[transaction.paymentMethod] -= transaction.amount;
       }
 
       if (transaction.type === "transfer") {
         summary.transfer += transaction.amount;
+        summary.outgoing += transaction.amount;
+        summary.paymentMethod.outgoing[transaction.paymentMethod] +=
+          transaction.amount;
+        summary.paymentMethod.net[transaction.paymentMethod] -= transaction.amount;
       }
-
-      summary.paymentMethod[transaction.paymentMethod] += transaction.amount;
       summary.byType[transaction.type] += 1;
 
-      if (transaction.type === "expense") {
-        summary.expenseCategories[transaction.category] =
-          (summary.expenseCategories[transaction.category] || 0) +
+      if (
+        transaction.type === "expense" ||
+        transaction.type === "transfer"
+      ) {
+        summary.outgoingCategories[transaction.category] =
+          (summary.outgoingCategories[transaction.category] || 0) +
           transaction.amount;
       }
 
@@ -107,23 +118,34 @@ const summarizeTransactions = (transactions) => {
       income: 0,
       expense: 0,
       transfer: 0,
+      outgoing: 0,
       paymentMethod: {
-        cash: 0,
-        online: 0,
+        income: {
+          cash: 0,
+          online: 0,
+        },
+        outgoing: {
+          cash: 0,
+          online: 0,
+        },
+        net: {
+          cash: 0,
+          online: 0,
+        },
       },
       byType: {
         income: 0,
         expense: 0,
         transfer: 0,
       },
-      expenseCategories: {},
+      outgoingCategories: {},
       incomeCategories: {},
     }
   );
 
   return {
     ...totals,
-    balance: totals.income - totals.expense,
+    balance: totals.income - totals.outgoing,
     transactionCount: transactions.length,
     dateRange:
       transactions.length > 0
@@ -132,7 +154,7 @@ const summarizeTransactions = (transactions) => {
             oldest: transactions[transactions.length - 1].date,
           }
         : null,
-    topExpenseCategories: Object.entries(totals.expenseCategories)
+    topOutgoingCategories: Object.entries(totals.outgoingCategories)
       .map(([category, total]) => ({ category, total }))
       .sort((left, right) => right.total - left.total)
       .slice(0, 5),
@@ -368,7 +390,8 @@ const askAssistant = async ({ userId, question, timezone, resetContext }) => {
           "You are an advanced personal finance assistant for an expense tracker. " +
           "Answer using only the provided transaction history, summary statistics, and prior chat context. " +
           "You remember previous turns in this conversation and should answer follow-up questions consistently. " +
-          "Use the full financial context, including income, expenses, transfers, categories, payment methods, cash vs online, dates, trends, and balances. " +
+          "Treat transfers as outgoing money sent to another person, not as internal wallet movement. " +
+          "Use the full financial context, including income, outgoing money, expenses, transfers, categories, payment methods, cash vs online, dates, trends, and balances. " +
           "If the data is insufficient, say that clearly. " +
           "Do not invent transactions. " +
           "Be practical, precise, and easy to understand. " +
@@ -456,11 +479,18 @@ const getMonthlyInsights = async ({ userId, timezone, month, year }) => {
   const expense = transactions
     .filter((transaction) => transaction.type === "expense")
     .reduce((sum, transaction) => sum + transaction.amount, 0);
-  const balance = income - expense;
+  const transfer = transactions
+    .filter((transaction) => transaction.type === "transfer")
+    .reduce((sum, transaction) => sum + transaction.amount, 0);
+  const outgoing = expense + transfer;
+  const balance = income - outgoing;
 
   const topCategories = Object.values(
     transactions
-      .filter((transaction) => transaction.type === "expense")
+      .filter(
+        (transaction) =>
+          transaction.type === "expense" || transaction.type === "transfer"
+      )
       .reduce((accumulator, transaction) => {
         const existing = accumulator[transaction.category] || {
           category: transaction.category,
@@ -494,6 +524,8 @@ const getMonthlyInsights = async ({ userId, timezone, month, year }) => {
             `Year: ${targetYear}\n` +
             `Income: ${income}\n` +
             `Expense: ${expense}\n` +
+            `Transfer: ${transfer}\n` +
+            `Outgoing: ${outgoing}\n` +
             `Balance: ${balance}\n` +
             `Top categories: ${JSON.stringify(topCategories)}\n` +
             `Transactions: ${JSON.stringify(formatTransactionsForAssistant(transactions))}`,
@@ -508,7 +540,7 @@ const getMonthlyInsights = async ({ userId, timezone, month, year }) => {
     year: targetYear,
     totals: {
       income,
-      expense,
+      expense: outgoing,
       balance,
     },
     topCategories,
