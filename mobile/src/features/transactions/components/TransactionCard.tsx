@@ -20,7 +20,7 @@ function TransactionCard({
   isDeleting?: boolean;
 }) {
   const { formatCurrency, formatDate, t } = useI18n();
-  const amountPrefix = transaction.type === "expense" ? "-" : "+";
+  const amountPrefix = transaction.type === "income" ? "+" : "-";
   const dateLabel = formatDate(transaction.date);
   const typeLabel =
     transaction.type === "income"

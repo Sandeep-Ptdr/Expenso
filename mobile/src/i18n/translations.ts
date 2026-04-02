@@ -219,10 +219,10 @@ export const translations: Record<Language, TranslationMap> = {
     "dashboard.welcome": "Welcome back",
     "dashboard.defaultTitle": "Dashboard",
     "dashboard.summary":
-      "Track income, expenses, and transfers with a quick summary of where your money stands today.",
+      "Track income, outgoing money, and transfers with a quick summary of where your money stands today.",
     "dashboard.logout": "Logout",
     "dashboard.income": "Income",
-    "dashboard.expense": "Expense",
+    "dashboard.expense": "Outgoing",
     "dashboard.balance": "Balance",
     "dashboard.paymentMethodSplit": "Payment Method Split",
     "dashboard.cash": "Cash",
@@ -236,8 +236,8 @@ export const translations: Record<Language, TranslationMap> = {
     "dashboard.aiInsightFallback": "Unable to load AI insights right now.",
     "dashboard.tryAgain": "Try Again",
     "dashboard.suggestedAction": "Suggested action",
-    "dashboard.topCategories": "Top expense categories this month",
-    "dashboard.noExpenseCategories": "No expense categories yet for this month.",
+    "dashboard.topCategories": "Top outgoing categories this month",
+    "dashboard.noExpenseCategories": "No outgoing categories yet for this month.",
     "dashboard.transactionsAnalyzed": "Based on {count} transaction{s} from {month}/{year}.",
     "dashboard.noInsightsTitle": "No insights generated yet",
     "dashboard.noInsightsMessage":
@@ -251,7 +251,7 @@ export const translations: Record<Language, TranslationMap> = {
     "dashboard.overviewError": "Unable to load overview",
     "dashboard.noTransactionsTitle": "No transactions yet",
     "dashboard.noTransactionsMessage":
-      "Add your first income or expense to start seeing trends and balances.",
+      "Add your first income or outgoing entry to start seeing trends and balances.",
     "summary.onTrack": "On track",
     "summary.needsAttention": "Needs attention",
     "summary.overview": "Overview",

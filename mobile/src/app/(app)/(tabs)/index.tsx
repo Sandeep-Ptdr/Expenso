@@ -122,16 +122,24 @@ export default function DashboardScreen() {
   const income = transactions
     .filter((item) => item.type === "income")
     .reduce((sum, item) => sum + item.amount, 0);
-  const expense = transactions
-    .filter((item) => item.type === "expense")
+  const outgoing = transactions
+    .filter((item) => item.type === "expense" || item.type === "transfer")
     .reduce((sum, item) => sum + item.amount, 0);
-  const balance = income - expense;
-  const cashTotal = transactions
-    .filter((item) => item.paymentMethod === "cash")
-    .reduce((sum, item) => sum + item.amount, 0);
-  const onlineTotal = transactions
-    .filter((item) => item.paymentMethod === "online")
-    .reduce((sum, item) => sum + item.amount, 0);
+  const balance = income - outgoing;
+  const cashTotal = transactions.reduce((sum, item) => {
+    if (item.paymentMethod !== "cash") {
+      return sum;
+    }
+
+    return item.type === "income" ? sum + item.amount : sum - item.amount;
+  }, 0);
+  const onlineTotal = transactions.reduce((sum, item) => {
+    if (item.paymentMethod !== "online") {
+      return sum;
+    }
+
+    return item.type === "income" ? sum + item.amount : sum - item.amount;
+  }, 0);
   const recentTransactions = transactions.slice(0, 3);
 
   return (
@@ -187,7 +195,7 @@ export default function DashboardScreen() {
           />
           <SummaryCard
             label={t("dashboard.expense")}
-            value={formatCurrency(expense)}
+            value={formatCurrency(outgoing)}
             accent="orange"
           />
         </View>
