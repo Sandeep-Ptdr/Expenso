@@ -154,7 +154,7 @@ export default function DashboardScreen() {
             </Text>
             <Text className="text-3xl font-bold text-ink-900">
               {user?.name || t("dashboard.defaultTitle")}
-              
+
             </Text>
           </View>
 
@@ -214,6 +214,28 @@ export default function DashboardScreen() {
               <Text className="mt-2 text-2xl font-bold text-ink-900">
                 {formatCurrency(onlineTotal)}
               </Text>
+            </View>
+
+
+
+          </View>
+
+        </Panel>
+
+        <Panel>
+          <View className="flex-row gap-3">
+            <View className="flex-1">
+              <PrimaryButton
+                label={t("dashboard.aiQuickAdd")}
+                variant="ghost"
+                onPress={() => router.push("/(app)/ai-add-transaction")}
+              />
+            </View>
+            <View className="flex-1">
+              <PrimaryButton
+                label={t("dashboard.addTransaction")}
+                onPress={() => router.push("/(app)/add-transaction")}
+              />
             </View>
           </View>
         </Panel>
@@ -311,21 +333,7 @@ export default function DashboardScreen() {
           )}
         </Panel>
 
-        <View className="flex-row gap-3">
-          <View className="flex-1">
-            <PrimaryButton
-              label={t("dashboard.aiQuickAdd")}
-              variant="ghost"
-              onPress={() => router.push("/(app)/ai-add-transaction")}
-            />
-          </View>
-          <View className="flex-1">
-            <PrimaryButton
-              label={t("dashboard.addTransaction")}
-              onPress={() => router.push("/(app)/add-transaction")}
-            />
-          </View>
-        </View>
+
 
         <Panel>
           <View className="mb-4 flex-row items-center justify-between">
