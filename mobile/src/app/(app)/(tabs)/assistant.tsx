@@ -8,16 +8,12 @@ import Panel from "@/components/ui/Panel";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import Screen from "@/components/ui/Screen";
 import { useAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/hooks/use-i18n";
 import { aiService } from "@/services/ai/ai.service";
 import { ApiError } from "@/services/api/http";
 
-const assistantExamples = [
-  "How much did I spend on food this month?",
-  "What was my highest expense category recently?",
-  "How much did I spend online versus cash this month?",
-];
-
 export default function AssistantScreen() {
+  const { t } = useI18n();
   const { token } = useAuth();
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -26,15 +22,20 @@ export default function AssistantScreen() {
     null
   );
   const [isLoading, setIsLoading] = useState(false);
+  const assistantExamples = [
+    t("assistant.example1"),
+    t("assistant.example2"),
+    t("assistant.example3"),
+  ];
 
   const handleAskAssistant = async () => {
     if (!token) {
-      setError("Your session has expired. Please sign in again.");
+      setError(t("assistant.sessionExpired"));
       return;
     }
 
     if (!question.trim()) {
-      setError("Enter a spending question for the assistant.");
+      setError(t("assistant.emptyQuestion"));
       return;
     }
 
@@ -53,7 +54,7 @@ export default function AssistantScreen() {
       if (loadError instanceof ApiError) {
         setError(loadError.message);
       } else {
-        setError("Unable to get an assistant answer right now.");
+        setError(t("assistant.error"));
       }
     } finally {
       setIsLoading(false);
@@ -67,10 +68,9 @@ export default function AssistantScreen() {
         contentContainerClassName="gap-6 px-5 py-4"
       >
         <View className="gap-2">
-          <Text className="text-3xl font-bold text-ink-900">AI Assistant</Text>
+          <Text className="text-3xl font-bold text-ink-900">{t("assistant.title")}</Text>
           <Text className="text-base leading-7 text-ink-700">
-            Ask questions about your spending patterns, categories, and payment
-            methods based on your saved transactions.
+            {t("assistant.subtitle")}
           </Text>
         </View>
 
@@ -78,7 +78,7 @@ export default function AssistantScreen() {
           <View className="gap-4">
             <View className="gap-2">
               <Text className="text-sm font-semibold text-ink-900">
-                Suggested questions
+                {t("assistant.suggestedQuestions")}
               </Text>
               <View className="flex-row flex-wrap gap-2">
                 {assistantExamples.map((example) => (
@@ -95,10 +95,10 @@ export default function AssistantScreen() {
             </View>
 
             <FormInput
-              label="Ask the assistant"
+              label={t("assistant.askLabel")}
               value={question}
               onChangeText={setQuestion}
-              placeholder="How much did I spend on food this month?"
+              placeholder={t("assistant.askPlaceholder")}
               multiline
               numberOfLines={4}
               textAlignVertical="top"
@@ -106,14 +106,14 @@ export default function AssistantScreen() {
 
             {error ? (
               <FeedbackCard
-                title="Assistant unavailable"
+                title={t("assistant.unavailable")}
                 message={error}
                 tone="error"
               />
             ) : null}
 
             <PrimaryButton
-              label={isLoading ? "Thinking..." : "Ask Assistant"}
+              label={isLoading ? t("assistant.thinking") : t("assistant.askButton")}
               onPress={handleAskAssistant}
               disabled={isLoading}
             />
@@ -124,21 +124,23 @@ export default function AssistantScreen() {
           <Panel>
             <View className="gap-3">
               <Text className="text-lg font-semibold text-ink-900">
-                Assistant Answer
+                {t("assistant.answerTitle")}
               </Text>
               <Text className="text-base leading-7 text-ink-700">{answer}</Text>
               {transactionsAnalyzed !== null ? (
                 <Text className="text-sm font-medium text-forest-700">
-                  Based on {transactionsAnalyzed} recent transaction
-                  {transactionsAnalyzed === 1 ? "" : "s"}.
+                  {t("assistant.answerBasedOn", {
+                    count: transactionsAnalyzed,
+                    s: transactionsAnalyzed === 1 ? "" : "s",
+                  })}
                 </Text>
               ) : null}
             </View>
           </Panel>
         ) : (
           <FeedbackCard
-            title="Ask your first question"
-            message="Try asking about monthly food spending, payment method breakdowns, or your top expense category."
+            title={t("assistant.firstQuestionTitle")}
+            message={t("assistant.firstQuestionMessage")}
           />
         )}
       </ScrollView>

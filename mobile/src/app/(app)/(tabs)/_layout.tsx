@@ -1,6 +1,10 @@
 import { Tabs } from "expo-router";
 
+import { useI18n } from "@/hooks/use-i18n";
+
 export default function TabsLayout() {
+  const { t } = useI18n();
+
   return (
     <Tabs
       screenOptions={{
@@ -18,19 +22,19 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Dashboard",
+          title: t("tabs.dashboard"),
         }}
       />
       <Tabs.Screen
         name="transactions"
         options={{
-          title: "Transactions",
+          title: t("tabs.transactions"),
         }}
       />
       <Tabs.Screen
         name="assistant"
         options={{
-          title: "Assistant",
+          title: t("tabs.assistant"),
         }}
       />
     </Tabs>

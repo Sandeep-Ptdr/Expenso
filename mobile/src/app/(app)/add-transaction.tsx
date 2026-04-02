@@ -11,6 +11,7 @@ import Panel from "@/components/ui/Panel";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import Screen from "@/components/ui/Screen";
 import { useAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/hooks/use-i18n";
 import { aiService } from "@/services/ai/ai.service";
 import { ApiError } from "@/services/api/http";
 import { useTransactionStore } from "@/store/transaction-store";
@@ -27,6 +28,7 @@ const aiExamples = [
 ];
 
 export default function AddTransactionScreen() {
+  const { t } = useI18n();
   const router = useRouter();
   const { token } = useAuth();
   const createTransaction = useTransactionStore((state) => state.createTransaction);
@@ -62,12 +64,12 @@ export default function AddTransactionScreen() {
 
   const handleParseTransactionText = async () => {
     if (!token) {
-      setAiError("Your session has expired. Please sign in again.");
+      setAiError(t("add.aiSessionExpired"));
       return;
     }
 
     if (!aiPrompt.trim()) {
-      setAiError("Enter a sentence like 'Paid 300 cash for lunch today'.");
+      setAiError(t("add.aiPromptRequired"));
       return;
     }
 
@@ -115,14 +117,16 @@ export default function AddTransactionScreen() {
 
       setAiSummary(
         parsed.missingFields.length > 0
-          ? `AI filled most fields. Please review: ${parsed.missingFields.join(", ")}`
-          : "AI filled the form. Please review and save."
+          ? t("add.aiSummaryReview", {
+              fields: parsed.missingFields.join(", "),
+            })
+          : t("add.aiSummaryDone")
       );
     } catch (error) {
       if (error instanceof ApiError) {
         setAiError(error.message);
       } else {
-        setAiError("Unable to parse that transaction right now.");
+        setAiError(t("add.aiParseError"));
       }
     } finally {
       setIsParsing(false);
@@ -148,7 +152,7 @@ export default function AddTransactionScreen() {
       if (error instanceof ApiError) {
         setServerError(error.message);
       } else {
-        setServerError("Unable to save this transaction right now.");
+        setServerError(t("add.saveError"));
       }
     }
   });
@@ -160,10 +164,9 @@ export default function AddTransactionScreen() {
         contentContainerClassName="gap-6 px-5 py-4"
       >
         <View className="gap-2">
-          <Text className="text-3xl font-bold text-ink-900">Add Transaction</Text>
+          <Text className="text-3xl font-bold text-ink-900">{t("add.title")}</Text>
           <Text className="text-base leading-7 text-ink-700">
-            Add income, expense, or transfer entries with the exact details you want
-            to track.
+            {t("add.subtitle")}
           </Text>
         </View>
 
@@ -171,17 +174,16 @@ export default function AddTransactionScreen() {
           <View className="gap-4">
             <View className="gap-2">
               <Text className="text-lg font-semibold text-ink-900">
-                AI Transaction Parser
+                {t("add.aiParserTitle")}
               </Text>
               <Text className="text-base leading-7 text-ink-700">
-                Type something like `Paid 300 cash for lunch today` and let AI fill
-                the form for you.
+                {t("add.aiParserSubtitle")}
               </Text>
             </View>
 
             <View className="gap-2">
               <Text className="text-sm font-semibold text-ink-900">
-                Quick examples
+                {t("add.quickExamples")}
               </Text>
               <View className="flex-row flex-wrap gap-2">
                 {aiExamples.map((example) => (
@@ -198,10 +200,10 @@ export default function AddTransactionScreen() {
             </View>
 
             <FormInput
-              label="Describe the transaction"
+              label={t("add.describeTransaction")}
               value={aiPrompt}
               onChangeText={setAiPrompt}
-              placeholder="Paid 300 cash for lunch today"
+              placeholder={t("add.describePlaceholder")}
               multiline
               numberOfLines={3}
               textAlignVertical="top"
@@ -209,7 +211,7 @@ export default function AddTransactionScreen() {
 
             {aiError ? (
               <FeedbackCard
-                title="AI parsing failed"
+                title={t("add.aiFailedTitle")}
                 message={aiError}
                 tone="error"
               />
@@ -218,10 +220,12 @@ export default function AddTransactionScreen() {
             {aiConfidence !== null ? (
               <View className="rounded-2xl border border-sand-200 bg-sand-50 px-4 py-3">
                 <Text className="text-sm font-semibold text-ink-900">
-                  AI confidence
+                  {t("add.aiConfidence")}
                 </Text>
                 <Text className="mt-1 text-base text-ink-700">
-                  {Math.round(aiConfidence * 100)}% confident in the parsed result.
+                  {t("add.aiConfidenceMessage", {
+                    percent: Math.round(aiConfidence * 100),
+                  })}
                 </Text>
               </View>
             ) : null}
@@ -229,7 +233,7 @@ export default function AddTransactionScreen() {
             {aiMissingFields.length > 0 ? (
               <View className="rounded-2xl border border-sand-200 bg-sand-50 px-4 py-3">
                 <Text className="text-sm font-semibold text-ink-900">
-                  Still needs your review
+                  {t("add.aiNeedsReview")}
                 </Text>
                 <Text className="mt-1 text-base text-ink-700">
                   {aiMissingFields.join(", ")}
@@ -239,7 +243,7 @@ export default function AddTransactionScreen() {
 
             {aiSummary ? (
               <FeedbackCard
-                title="AI parsing complete"
+                title={t("add.aiCompleteTitle")}
                 message={aiSummary}
               />
             ) : null}
@@ -247,14 +251,14 @@ export default function AddTransactionScreen() {
             <View className="flex-row gap-3">
               <View className="flex-1">
                 <PrimaryButton
-                  label={isParsing ? "Parsing..." : "Fill With AI"}
+                  label={isParsing ? t("add.parsing") : t("add.fillWithAI")}
                   onPress={handleParseTransactionText}
                   disabled={isParsing}
                 />
               </View>
               <View className="flex-1">
                 <PrimaryButton
-                  label="Clear"
+                  label={t("add.clear")}
                   variant="ghost"
                   onPress={() => {
                     setAiPrompt("");
@@ -273,12 +277,18 @@ export default function AddTransactionScreen() {
         <Panel>
           <View className="gap-4">
             <View className="gap-2">
-              <Text className="text-sm font-semibold text-ink-900">Type</Text>
+              <Text className="text-sm font-semibold text-ink-900">{t("add.type")}</Text>
               <View className="flex-row flex-wrap gap-2">
                 {(["income", "expense", "transfer"] as const).map((value) => (
                   <FilterChip
                     key={value}
-                    label={value}
+                    label={
+                      value === "income"
+                        ? t("transactionType.income")
+                        : value === "expense"
+                          ? t("transactionType.expense")
+                          : t("transactionType.transfer")
+                    }
                     selected={selectedType === value}
                     onPress={() =>
                       setValue("type", value as TransactionType, {
@@ -295,12 +305,12 @@ export default function AddTransactionScreen() {
               name="amount"
               render={({ field: { onChange, onBlur, value } }) => (
                 <FormInput
-                  label="Amount"
+                  label={t("add.amount")}
                   keyboardType="decimal-pad"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   value={value}
-                  placeholder="0.00"
+                  placeholder={t("add.amountPlaceholder")}
                   error={errors.amount?.message}
                 />
               )}
@@ -311,11 +321,11 @@ export default function AddTransactionScreen() {
               name="category"
               render={({ field: { onChange, onBlur, value } }) => (
                 <FormInput
-                  label="Category"
+                  label={t("add.category")}
                   onBlur={onBlur}
                   onChangeText={onChange}
                   value={value}
-                  placeholder="Food, Salary, Rent..."
+                  placeholder={t("add.categoryPlaceholder")}
                   error={errors.category?.message}
                 />
               )}
@@ -323,13 +333,13 @@ export default function AddTransactionScreen() {
 
             <View className="gap-2">
               <Text className="text-sm font-semibold text-ink-900">
-                Payment Method
+                {t("add.paymentMethod")}
               </Text>
               <View className="flex-row flex-wrap gap-2">
                 {(["cash", "online"] as const).map((value) => (
                   <FilterChip
                     key={value}
-                    label={value}
+                    label={value === "cash" ? t("paymentMethod.cash") : t("paymentMethod.online")}
                     selected={selectedPaymentMethod === value}
                     onPress={() =>
                       setValue("paymentMethod", value as PaymentMethod, {
@@ -346,12 +356,12 @@ export default function AddTransactionScreen() {
               name="date"
               render={({ field: { onChange, onBlur, value } }) => (
                 <FormInput
-                  label="Date"
+                  label={t("add.date")}
                   autoCapitalize="none"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   value={value}
-                  placeholder="YYYY-MM-DD"
+                  placeholder={t("transactions.datePlaceholder")}
                   error={errors.date?.message}
                 />
               )}
@@ -362,11 +372,11 @@ export default function AddTransactionScreen() {
               name="description"
               render={({ field: { onChange, onBlur, value } }) => (
                 <FormInput
-                  label="Description"
+                  label={t("add.description")}
                   onBlur={onBlur}
                   onChangeText={onChange}
                   value={value}
-                  placeholder="Optional note"
+                  placeholder={t("add.descriptionPlaceholder")}
                   error={errors.description?.message}
                 />
               )}
@@ -378,11 +388,11 @@ export default function AddTransactionScreen() {
                 name="person"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <FormInput
-                    label="Person"
+                    label={t("add.person")}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
-                    placeholder="Who is involved in this transfer?"
+                    placeholder={t("add.personPlaceholder")}
                     error={errors.person?.message}
                   />
                 )}
@@ -391,14 +401,14 @@ export default function AddTransactionScreen() {
 
             {serverError ? (
               <FeedbackCard
-                title="Could not save transaction"
+                title={t("add.saveFailedTitle")}
                 message={serverError}
                 tone="error"
               />
             ) : null}
 
             <PrimaryButton
-              label={isSubmitting ? "Saving..." : "Save Transaction"}
+              label={isSubmitting ? t("add.saving") : t("add.save")}
               onPress={onSubmit}
               disabled={isSubmitting}
             />
