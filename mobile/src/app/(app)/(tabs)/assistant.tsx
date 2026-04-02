@@ -28,26 +28,55 @@ const getFriendlyAssistantError = (message: string) => {
   return message;
 };
 
-const formatAssistantNumbers = (content: string) =>
-  content.replace(
-    /(?<![\w.])(?:Rs\.?\s*)?(\d{4,}(?:\.\d+)?)(?![\w.])/g,
-    (match, numericPart: string) => {
-      const value = Number(numericPart);
+const formatStandaloneNumber = (numericPart: string) => {
+  const value = Number(numericPart);
 
-      if (Number.isNaN(value)) {
+  if (Number.isNaN(value)) {
+    return numericPart;
+  }
+
+  return numericPart.includes(".")
+    ? value.toLocaleString("en-IN", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      })
+    : value.toLocaleString("en-IN");
+};
+
+const formatAssistantNumbers = (content: string) => {
+  const protectedSegments: string[] = [];
+  const contentWithProtectedDates = content.replace(
+    /\b\d{4}-\d{2}-\d{2}\b/g,
+    (match) => {
+      const token = `__DATE_${protectedSegments.length}__`;
+      protectedSegments.push(match);
+      return token;
+    }
+  );
+
+  const formattedContent = contentWithProtectedDates.replace(
+    /(?:Rs\.?\s*)?\b\d{4,}(?:\.\d+)?\b/g,
+    (match) => {
+      const currencyMatch = match.match(/^(Rs\.?\s*)?(.*)$/);
+
+      if (!currencyMatch) {
         return match;
       }
 
-      const formattedNumber = numericPart.includes(".")
-        ? value.toLocaleString("en-IN", {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2,
-          })
-        : value.toLocaleString("en-IN");
+      const [, prefix = "", numericPart = ""] = currencyMatch;
 
-      return match.replace(numericPart, formattedNumber);
+      if (!numericPart || numericPart.includes(",")) {
+        return match;
+      }
+
+      return `${prefix}${formatStandaloneNumber(numericPart)}`;
     }
   );
+
+  return formattedContent.replace(/__DATE_(\d+)__/g, (_, index: string) => {
+    return protectedSegments[Number(index)] || "";
+  });
+};
 
 const renderInlineMarkdown = (text: string, colorClassName: string) => {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean);
