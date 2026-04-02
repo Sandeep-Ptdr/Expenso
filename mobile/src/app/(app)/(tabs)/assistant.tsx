@@ -28,6 +28,157 @@ const getFriendlyAssistantError = (message: string) => {
   return message;
 };
 
+const formatAssistantNumbers = (content: string) =>
+  content.replace(
+    /(?<![\w.])(?:Rs\.?\s*)?(\d{4,}(?:\.\d+)?)(?![\w.])/g,
+    (match, numericPart: string) => {
+      const value = Number(numericPart);
+
+      if (Number.isNaN(value)) {
+        return match;
+      }
+
+      const formattedNumber = numericPart.includes(".")
+        ? value.toLocaleString("en-IN", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+          })
+        : value.toLocaleString("en-IN");
+
+      return match.replace(numericPart, formattedNumber);
+    }
+  );
+
+const renderInlineMarkdown = (text: string, colorClassName: string) => {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean);
+
+  return parts.map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <Text key={`${part}-${index}`} className={`font-bold ${colorClassName}`}>
+          {part.slice(2, -2)}
+        </Text>
+      );
+    }
+
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <Text
+          key={`${part}-${index}`}
+          className={`rounded-md bg-sand-100 px-1 py-0.5 font-medium ${colorClassName}`}
+        >
+          {part.slice(1, -1)}
+        </Text>
+      );
+    }
+
+    return (
+      <Text key={`${part}-${index}`} className={colorClassName}>
+        {part}
+      </Text>
+    );
+  });
+};
+
+function AssistantMarkdown({ content }: { content: string }) {
+  const lines = content.split("\n").filter((line, index, source) => {
+    if (line.trim().length > 0) {
+      return true;
+    }
+
+    const previousLine = source[index - 1];
+    return Boolean(previousLine && previousLine.trim().length > 0);
+  });
+
+  return (
+    <View className="mt-2 gap-2">
+      {lines.map((rawLine, index) => {
+        const line = rawLine.trimEnd();
+        const trimmedLine = line.trim();
+
+        if (!trimmedLine) {
+          return <View key={`spacer-${index}`} className="h-1" />;
+        }
+
+        if (trimmedLine.startsWith("### ")) {
+          return (
+            <Text key={`h3-${index}`} className="text-base font-bold text-ink-900">
+              {trimmedLine.slice(4)}
+            </Text>
+          );
+        }
+
+        if (trimmedLine.startsWith("## ")) {
+          return (
+            <Text key={`h2-${index}`} className="text-lg font-bold text-ink-900">
+              {trimmedLine.slice(3)}
+            </Text>
+          );
+        }
+
+        if (trimmedLine.startsWith("# ")) {
+          return (
+            <Text key={`h1-${index}`} className="text-xl font-bold text-ink-900">
+              {trimmedLine.slice(2)}
+            </Text>
+          );
+        }
+
+        if (/^[-*]\s+/.test(trimmedLine)) {
+          const itemText = trimmedLine.replace(/^[-*]\s+/, "");
+
+          return (
+            <View key={`bullet-${index}`} className="flex-row items-start gap-2">
+              <Text className="pt-0.5 text-base text-forest-700">•</Text>
+              <Text className="flex-1 text-base leading-6 text-ink-900">
+                {renderInlineMarkdown(itemText, "text-ink-900")}
+              </Text>
+            </View>
+          );
+        }
+
+        if (/^\d+\.\s+/.test(trimmedLine)) {
+          const match = trimmedLine.match(/^(\d+)\.\s+(.*)$/);
+
+          if (!match) {
+            return null;
+          }
+
+          return (
+            <View key={`ordered-${index}`} className="flex-row items-start gap-2">
+              <Text className="pt-0.5 text-base font-semibold text-forest-700">
+                {match[1]}.
+              </Text>
+              <Text className="flex-1 text-base leading-6 text-ink-900">
+                {renderInlineMarkdown(match[2], "text-ink-900")}
+              </Text>
+            </View>
+          );
+        }
+
+        if (trimmedLine.startsWith("> ")) {
+          return (
+            <View
+              key={`quote-${index}`}
+              className="border-l-4 border-forest-500 bg-sand-50 px-3 py-2"
+            >
+              <Text className="text-base leading-6 text-ink-700">
+                {renderInlineMarkdown(trimmedLine.slice(2), "text-ink-700")}
+              </Text>
+            </View>
+          );
+        }
+
+        return (
+          <Text key={`p-${index}`} className="text-base leading-6 text-ink-900">
+            {renderInlineMarkdown(trimmedLine, "text-ink-900")}
+          </Text>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function AssistantScreen() {
   const { t } = useI18n();
   const { token } = useAuth();
@@ -258,15 +409,15 @@ export default function AssistantScreen() {
                     >
                       {message.role === "user" ? "You" : "Assistant"}
                     </Text>
-                    <Text
-                      className={
-                        message.role === "user"
-                          ? "mt-2 text-base leading-6 text-white"
-                          : "mt-2 text-base leading-6 text-ink-900"
-                      }
-                    >
-                      {message.content}
-                    </Text>
+                    {message.role === "user" ? (
+                      <Text className="mt-2 text-base leading-6 text-white">
+                        {message.content}
+                      </Text>
+                    ) : (
+                      <AssistantMarkdown
+                        content={formatAssistantNumbers(message.content)}
+                      />
+                    )}
                   </View>
                 ))}
               </View>
