@@ -1,16 +1,18 @@
-import { useRouter } from "expo-router";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { RefreshControl, ScrollView, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 
 import FeedbackCard from "@/components/ui/FeedbackCard";
+import LanguageToggle from "@/components/ui/LanguageToggle";
 import LoadingCard from "@/components/ui/LoadingCard";
 import Panel from "@/components/ui/Panel";
-import SummaryCard from "@/features/dashboard/components/SummaryCard";
 import PrimaryButton from "@/components/ui/PrimaryButton";
 import Screen from "@/components/ui/Screen";
+import SummaryCard from "@/features/dashboard/components/SummaryCard";
 import TransactionCard from "@/features/transactions/components/TransactionCard";
-import LanguageToggle from "@/components/ui/LanguageToggle";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
 import { aiService } from "@/services/ai/ai.service";
@@ -34,6 +36,59 @@ const getFriendlyInsightsErrorMessage = (message: string, busyMessage: string) =
 
   return message;
 };
+
+type DashboardActionButtonProps = {
+  label: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  onPress: () => void;
+  tone: "green" | "accent";
+};
+
+function DashboardActionButton({
+  label,
+  icon,
+  onPress,
+  tone,
+}: DashboardActionButtonProps) {
+  const isGreen = tone === "green";
+  const content = (
+    <View className="min-h-[70px] flex-row items-center justify-center gap-2 rounded-[18px] px-4">
+      <MaterialCommunityIcons name={icon} size={22} color="#ffffff" />
+      <Text className="text-[15px] font-semibold text-white">{label}</Text>
+    </View>
+  );
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      className="flex-1"
+      style={({ pressed }) => ({
+        opacity: pressed ? 0.94 : 1,
+        transform: [{ scale: pressed ? 0.985 : 1 }],
+        shadowColor: isGreen ? "#10b981" : "#d946ef",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.22,
+        shadowRadius: 18,
+        elevation: 8,
+      })}
+    >
+      {isGreen ? (
+        <View className="rounded-[18px] bg-forest-500">{content}</View>
+      ) : (
+        <LinearGradient
+          colors={["#A855F7", "#EC4899"]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          className="rounded-[18px]"
+          style={{ overflow: "hidden" }}
+        >
+          {content}
+        </LinearGradient>
+      )}
+    </Pressable>
+  );
+}
 
 export default function DashboardScreen() {
   const { formatCurrency, t } = useI18n();
@@ -146,7 +201,7 @@ export default function DashboardScreen() {
     <Screen padded={false}>
       <ScrollView
         className="flex-1 bg-sand-100"
-        contentContainerClassName="gap-6 px-5 py-4"
+        contentContainerClassName="gap-6 px-4 py-4"
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
@@ -155,23 +210,23 @@ export default function DashboardScreen() {
           />
         }
       >
-        <View className="flex-row items-start justify-between gap-4">
-          <View className="flex-1 gap-2">
-            <Text className="text-sm font-semibold uppercase tracking-[2px] text-forest-700">
-              {t("dashboard.welcome")}
-            </Text>
-            <Text className="text-3xl font-bold text-ink-900">
-              {user?.name || t("dashboard.defaultTitle")}
+        <View className="-mx-4 rounded-b-[28px] bg-[#10B981] px-4 pb-6 pt-2">
+          <View className="flex-row items-start justify-between gap-4">
+            <View className="flex-1 gap-2">
+              <Text className="text-base font-medium text-white/90">
+                {t("dashboard.welcome")}
+              </Text>
+              <Text className="text-3xl font-semibold text-white">
+                {user?.name || t("dashboard.defaultTitle")}
+              </Text>
+            </View>
 
-            </Text>
-          </View>
-
-          <View className="items-end gap-2">
-            <LanguageToggle />
-            <View className="w-auto">
+            <View className="items-end gap-3">
+              <LanguageToggle />
               <PrimaryButton
                 label={t("dashboard.logout")}
-                variant="ghost"
+                variant="solid"
+                tone="dark"
                 onPress={async () => {
                   useTransactionStore.getState().reset();
                   await logout();
@@ -181,76 +236,91 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        <View className="gap-2">
-          <Text className="text-base leading-7 text-ink-700">
-            {t("dashboard.summary")}
-          </Text>
-        </View>
-
-        <View className="flex-row gap-3">
+        <View className="gap-3">
+          <View className="flex-row gap-3">
+            <View className="flex-1">
+              <SummaryCard
+                label={t("dashboard.income")}
+                value={formatCurrency(income)}
+                accent="green"
+              />
+            </View>
+            <View className="flex-1">
+              <SummaryCard
+                label={t("dashboard.expense")}
+                value={formatCurrency(outgoing)}
+                accent="orange"
+              />
+            </View>
+          </View>
           <SummaryCard
-            label={t("dashboard.income")}
-            value={formatCurrency(income)}
-            accent="green"
-          />
-          <SummaryCard
-            label={t("dashboard.expense")}
-            value={formatCurrency(outgoing)}
-            accent="orange"
+            label={t("dashboard.balance")}
+            value={formatCurrency(balance)}
+            accent="neutral"
           />
         </View>
-
-        <SummaryCard
-          label={t("dashboard.balance")}
-          value={formatCurrency(balance)}
-          accent="neutral"
-        />
 
         <Panel>
-          <Text className="text-lg font-semibold text-ink-900">
+          <Text className="text-lg font-medium text-ink-900">
             {t("dashboard.paymentMethodSplit")}
           </Text>
           <View className="mt-4 flex-row gap-3">
-            <View className="flex-1 rounded-[24px] bg-sand-50 px-4 py-4">
-              <Text className="text-sm font-medium text-ink-700">{t("dashboard.cash")}</Text>
-              <Text className="mt-2 text-2xl font-bold text-ink-900">
+            <View className="flex-1 rounded-[24px] border border-sand-300 bg-white px-4 py-4 shadow-card">
+              <View className="flex-row items-center gap-1 ">
+                <View className=" items-center justify-center rounded-full ">
+                  <MaterialCommunityIcons
+                    name="cash-multiple"
+                    size={18}
+                    color="#6b6b6b"
+                  />
+                </View>
+                <Text className="text-[15px] font-medium text-ink-700">
+                  {t("dashboard.cash")}
+                </Text>
+              </View>
+              <Text className="mt-4 text-[20px] font-semibold text-ink-900">
                 {formatCurrency(cashTotal)}
               </Text>
             </View>
-            <View className="flex-1 rounded-[24px] bg-sand-50 px-4 py-4">
-              <Text className="text-sm font-medium text-ink-700">{t("dashboard.online")}</Text>
-              <Text className="mt-2 text-2xl font-bold text-ink-900">
+
+            <View className="flex-1 rounded-[24px] border border-sand-300 bg-white px-4 py-4 shadow-card">
+              <View className="flex-row items-center gap-1">
+                <View className=" items-center justify-center rounded-full">
+                  <MaterialCommunityIcons
+                    name="credit-card-outline"
+                    size={18}
+                    color="#6b6b6b"
+                  />
+                </View>
+                <Text className="text-[15px] font-medium text-ink-700">
+                  {t("dashboard.online")}
+                </Text>
+              </View>
+              <Text className="mt-4 text-[20px] font-semibold text-ink-900">
                 {formatCurrency(onlineTotal)}
               </Text>
             </View>
-
-
-
-          </View>
-
-        </Panel>
-
-        <Panel>
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <PrimaryButton
-                label={t("dashboard.aiQuickAdd")}
-                variant="ghost"
-                onPress={() => router.push("/(app)/ai-add-transaction")}
-              />
-            </View>
-            <View className="flex-1">
-              <PrimaryButton
-                label={t("dashboard.addTransaction")}
-                onPress={() => router.push("/(app)/add-transaction")}
-              />
-            </View>
           </View>
         </Panel>
+
+        <View className="flex-row gap-3">
+          <DashboardActionButton
+            label={t("dashboard.addTransaction")}
+            icon="plus"
+            tone="green"
+            onPress={() => router.push("/(app)/add-transaction")}
+          />
+          <DashboardActionButton
+            label={t("dashboard.aiQuickAdd")}
+            icon="auto-fix"
+            tone="accent"
+            onPress={() => router.push("/(app)/ai-add-transaction")}
+          />
+        </View>
 
         <Panel>
           <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-lg font-semibold text-ink-900">
+            <Text className="text-lg font-medium text-accent-500">
               {t("dashboard.aiInsight")}
             </Text>
             {insights ? (
@@ -276,7 +346,7 @@ export default function DashboardScreen() {
           ) : insights ? (
             <View className="gap-4">
               <View className="gap-2">
-                <Text className="text-xl font-semibold text-ink-900">
+                <Text className="text-xl font-medium text-ink-900">
                   {insights.insight.headline}
                 </Text>
                 <Text className="text-base leading-7 text-ink-700">
@@ -284,17 +354,17 @@ export default function DashboardScreen() {
                 </Text>
               </View>
 
-              <View className="rounded-[24px] bg-sand-50 px-4 py-4">
-                <Text className="text-sm font-semibold text-ink-900">
+              <View className="rounded-2xl border border-accent-500/15 bg-accent-100 px-4 py-4">
+                <Text className="text-sm font-medium text-accent-500">
                   {t("dashboard.suggestedAction")}
                 </Text>
-                <Text className="mt-2 text-base leading-7 text-ink-700">
+                <Text className="mt-2 text-base leading-7 text-ink-900">
                   {insights.insight.suggestion}
                 </Text>
               </View>
 
               <View className="gap-2">
-                <Text className="text-sm font-semibold text-ink-900">
+                <Text className="text-sm font-medium text-ink-900">
                   {t("dashboard.topCategories")}
                 </Text>
                 {insights.topCategories.length === 0 ? (
@@ -305,12 +375,12 @@ export default function DashboardScreen() {
                   insights.topCategories.map((category) => (
                     <View
                       key={category.category}
-                      className="flex-row items-center justify-between rounded-2xl bg-sand-50 px-4 py-3"
+                      className="flex-row items-center justify-between rounded-2xl border border-sand-300 bg-sand-100 px-4 py-3"
                     >
                       <Text className="text-base font-medium text-ink-900">
                         {category.category}
                       </Text>
-                      <Text className="text-base font-semibold text-forest-700">
+                      <Text className="text-base font-medium text-forest-700">
                         {formatCurrency(category.total)}
                       </Text>
                     </View>
@@ -335,17 +405,16 @@ export default function DashboardScreen() {
               />
               <PrimaryButton
                 label={t("dashboard.generateInsight")}
+                tone="accent"
                 onPress={() => loadMonthlyInsights(true)}
               />
             </View>
           )}
         </Panel>
 
-
-
         <Panel>
           <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-lg font-semibold text-ink-900">
+            <Text className="text-lg font-medium text-ink-900">
               {t("dashboard.recentTransactions")}
             </Text>
             <Text

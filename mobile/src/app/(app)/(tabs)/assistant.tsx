@@ -1,13 +1,18 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
-import { Alert, ScrollView, Text, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import FeedbackCard from "@/components/ui/FeedbackCard";
-import FilterChip from "@/components/ui/FilterChip";
-import FormInput from "@/components/ui/FormInput";
 import LoadingCard from "@/components/ui/LoadingCard";
-import Panel from "@/components/ui/Panel";
-import PrimaryButton from "@/components/ui/PrimaryButton";
 import Screen from "@/components/ui/Screen";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/hooks/use-i18n";
@@ -53,11 +58,15 @@ const formatAssistantNumbers = (content: string) => {
       return token;
     }
   );
+  const contentWithCurrencySymbol = contentWithProtectedDates.replace(
+    /Rs\.?\s*/g,
+    "₹"
+  );
 
-  const formattedContent = contentWithProtectedDates.replace(
-    /(?:Rs\.?\s*)?\b\d{4,}(?:\.\d+)?\b/g,
+  const formattedContent = contentWithCurrencySymbol.replace(
+    /(?:₹\s*)?\b\d{4,}(?:\.\d+)?\b/g,
     (match) => {
-      const currencyMatch = match.match(/^(Rs\.?\s*)?(.*)$/);
+      const currencyMatch = match.match(/^(₹\s*)?(.*)$/);
 
       if (!currencyMatch) {
         return match;
@@ -129,37 +138,13 @@ function AssistantMarkdown({ content }: { content: string }) {
           return <View key={`spacer-${index}`} className="h-1" />;
         }
 
-        if (trimmedLine.startsWith("### ")) {
-          return (
-            <Text key={`h3-${index}`} className="text-base font-bold text-ink-900">
-              {trimmedLine.slice(4)}
-            </Text>
-          );
-        }
-
-        if (trimmedLine.startsWith("## ")) {
-          return (
-            <Text key={`h2-${index}`} className="text-lg font-bold text-ink-900">
-              {trimmedLine.slice(3)}
-            </Text>
-          );
-        }
-
-        if (trimmedLine.startsWith("# ")) {
-          return (
-            <Text key={`h1-${index}`} className="text-xl font-bold text-ink-900">
-              {trimmedLine.slice(2)}
-            </Text>
-          );
-        }
-
         if (/^[-*]\s+/.test(trimmedLine)) {
           const itemText = trimmedLine.replace(/^[-*]\s+/, "");
 
           return (
             <View key={`bullet-${index}`} className="flex-row items-start gap-2">
-              <Text className="pt-0.5 text-base text-forest-700">•</Text>
-              <Text className="flex-1 text-base leading-6 text-ink-900">
+              <Text className="pt-0.5 text-base text-ink-900">•</Text>
+              <Text className="flex-1 text-base leading-7 text-ink-900">
                 {renderInlineMarkdown(itemText, "text-ink-900")}
               </Text>
             </View>
@@ -175,35 +160,42 @@ function AssistantMarkdown({ content }: { content: string }) {
 
           return (
             <View key={`ordered-${index}`} className="flex-row items-start gap-2">
-              <Text className="pt-0.5 text-base font-semibold text-forest-700">
+              <Text className="pt-0.5 text-base font-semibold text-ink-900">
                 {match[1]}.
               </Text>
-              <Text className="flex-1 text-base leading-6 text-ink-900">
+              <Text className="flex-1 text-base leading-7 text-ink-900">
                 {renderInlineMarkdown(match[2], "text-ink-900")}
               </Text>
             </View>
           );
         }
 
-        if (trimmedLine.startsWith("> ")) {
-          return (
-            <View
-              key={`quote-${index}`}
-              className="border-l-4 border-forest-500 bg-sand-50 px-3 py-2"
-            >
-              <Text className="text-base leading-6 text-ink-700">
-                {renderInlineMarkdown(trimmedLine.slice(2), "text-ink-700")}
-              </Text>
-            </View>
-          );
-        }
-
         return (
-          <Text key={`p-${index}`} className="text-base leading-6 text-ink-900">
+          <Text key={`p-${index}`} className="text-base leading-7 text-ink-900">
             {renderInlineMarkdown(trimmedLine, "text-ink-900")}
           </Text>
         );
       })}
+    </View>
+  );
+}
+
+function AssistantReplyCard({ content }: { content: string }) {
+  return (
+    <View className="mr-8 self-start rounded-[22px] border border-sand-300 bg-white px-5 py-4 shadow-card">
+      <View className="flex-row items-center gap-2">
+        <MaterialCommunityIcons name="auto-fix" size={18} color="#A855F7" />
+        <Text className="text-sm font-medium text-accent-500">AI Assistant</Text>
+      </View>
+      <AssistantMarkdown content={formatAssistantNumbers(content)} />
+    </View>
+  );
+}
+
+function UserMessageBubble({ content }: { content: string }) {
+  return (
+    <View className="ml-12 self-end rounded-[22px] rounded-br-md bg-forest-500 px-5 py-4">
+      <Text className="text-[16px] font-medium leading-7 text-white">{content}</Text>
     </View>
   );
 }
@@ -219,10 +211,12 @@ export default function AssistantScreen() {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isConversationLoading, setIsConversationLoading] = useState(true);
+
   const assistantExamples = [
     t("assistant.example1"),
     t("assistant.example2"),
     t("assistant.example3"),
+    "What are my recent cash transactions?",
   ];
 
   const loadConversation = useCallback(async () => {
@@ -327,133 +321,160 @@ export default function AssistantScreen() {
     );
   };
 
+  const hasChatStarted = messages.length > 0;
+
   return (
     <Screen padded={false}>
-      <ScrollView
-        className="flex-1 bg-sand-100"
-        contentContainerClassName="gap-6 px-5 py-4"
-      >
-        <View className="gap-2">
-          <Text className="text-3xl font-bold text-ink-900">{t("assistant.title")}</Text>
-          <Text className="text-base leading-7 text-ink-700">
-            {t("assistant.subtitle")}
-          </Text>
-        </View>
-
-        <Panel>
-          <View className="gap-4">
+      <View className="flex-1 bg-sand-100">
+        <LinearGradient
+          colors={["#A855F7", "#EC4899"]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          className="rounded-b-[30px] px-5 pb-8 pt-5"
+          style={{overflow: "hidden"}}
+        >
+          <View className="flex-row items-start justify-between gap-4">
             <View className="gap-2">
-              <Text className="text-sm font-semibold text-ink-900">
-                {t("assistant.suggestedQuestions")}
-              </Text>
-              <View className="flex-row flex-wrap gap-2">
-                {assistantExamples.map((example) => (
-                  <FilterChip
-                    key={example}
-                    label={example}
-                    onPress={() => {
-                      setQuestion(example);
-                      setError("");
-                    }}
-                  />
-                ))}
-              </View>
+              <Text className="text-[24px] font-semibold text-white">{t("assistant.title")}</Text>
+              <Text className="text-base text-white/95">Ask me about your finances</Text>
             </View>
 
-            <FormInput
-              label={t("assistant.askLabel")}
-              value={question}
-              onChangeText={setQuestion}
-              placeholder={t("assistant.askPlaceholder")}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-
-            {error ? (
-              <FeedbackCard
-                title={t("assistant.unavailable")}
-                message={error}
-                tone="error"
-              />
+            {hasChatStarted ? (
+              <Pressable
+                onPress={handleClearConversation}
+                className="h-11 w-11 items-center justify-center rounded-full bg-white/20"
+                accessibilityRole="button"
+              >
+                <MaterialCommunityIcons
+                  name="trash-can-outline"
+                  size={22}
+                  color="#ffffff"
+                />
+              </Pressable>
             ) : null}
-
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <PrimaryButton
-                  label={isLoading ? t("assistant.thinking") : t("assistant.askButton")}
-                  onPress={() => handleAskAssistant(false)}
-                  disabled={isLoading}
-                />
-              </View>
-              <View className="flex-1">
-                <PrimaryButton
-                  label="Clear Chat"
-                  variant="ghost"
-                  onPress={handleClearConversation}
-                  disabled={isLoading || messages.length === 0}
-                />
-              </View>
-            </View>
           </View>
-        </Panel>
+        </LinearGradient>
 
-        <Panel>
-          <View className="gap-4">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-lg font-semibold text-ink-900">
-                Conversation
-              </Text>
-              {transactionsAnalyzed !== null ? (
-                <Text className="text-sm font-medium text-forest-700">
-                  Data set: {transactionsAnalyzed} transactions
-                </Text>
-              ) : null}
-            </View>
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="gap-5 px-4 py-5"
+          keyboardShouldPersistTaps="handled"
+        >
+          {!hasChatStarted ? (
+            <View className="gap-6">
+              <View className="items-center gap-4 pt-2">
+                <View className="h-16 w-16 items-center justify-center rounded-full bg-accent-100">
+                  <MaterialCommunityIcons
+                    name="auto-fix"
+                    size={34}
+                    color="#A855F7"
+                  />
+                </View>
+                <View className="items-center gap-2">
+                  <Text className="text-[22px] font-medium text-ink-900">Ask Me Anything</Text>
+                  <Text className="text-center text-[16px] leading-8 text-ink-700">
+                    I can help you understand your spending patterns, track expenses,
+                    and provide insights
+                  </Text>
+                </View>
+              </View>
 
-            {isConversationLoading ? (
-              <LoadingCard label="Loading assistant conversation..." />
-            ) : messages.length === 0 ? (
-              <FeedbackCard
-                title={t("assistant.firstQuestionTitle")}
-                message={t("assistant.firstQuestionMessage")}
-              />
-            ) : (
               <View className="gap-3">
-                {messages.map((message) => (
-                  <View
-                    key={message.id}
-                    className={
-                      message.role === "user"
-                        ? "self-end rounded-[24px] bg-forest-500 px-4 py-3"
-                        : "self-start rounded-[24px] bg-sand-50 px-4 py-3"
-                    }
-                  >
-                    <Text
-                      className={
-                        message.role === "user"
-                          ? "text-sm font-semibold text-white"
-                          : "text-xs font-semibold uppercase tracking-[1px] text-forest-700"
-                      }
+                <Text className="text-[16px] font-medium text-ink-700">Try asking:</Text>
+                <View className="gap-3">
+                  {assistantExamples.map((example) => (
+                    <Pressable
+                      key={example}
+                      onPress={() => {
+                        setQuestion(example);
+                        setError("");
+                      }}
+                      className="rounded-[20px] border border-[#E9D5FF] bg-[#FAF5FF] px-5 py-4"
                     >
-                      {message.role === "user" ? "You" : "Assistant"}
-                    </Text>
-                    {message.role === "user" ? (
-                      <Text className="mt-2 text-base leading-6 text-white">
-                        {message.content}
+                      <Text className="text-[16px] font-medium leading-6 text-[#6B21A8]">
+                        {example}
                       </Text>
-                    ) : (
-                      <AssistantMarkdown
-                        content={formatAssistantNumbers(message.content)}
-                      />
-                    )}
-                  </View>
-                ))}
+                    </Pressable>
+                  ))}
+                </View>
               </View>
-            )}
+            </View>
+          ) : (
+            <View className="gap-5">
+              {transactionsAnalyzed !== null ? (
+                <View className="self-start rounded-full bg-accent-100 px-4 py-2">
+                  <Text className="text-sm font-medium text-accent-500">
+                    Based on {transactionsAnalyzed} transactions
+                  </Text>
+                </View>
+              ) : null}
+
+              {isConversationLoading ? (
+                <LoadingCard label="Loading assistant conversation..." />
+              ) : (
+                <View className="gap-5">
+                  {messages.map((message) =>
+                    message.role === "user" ? (
+                      <UserMessageBubble key={message.id} content={message.content} />
+                    ) : (
+                      <AssistantReplyCard key={message.id} content={message.content} />
+                    )
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+
+          {error ? (
+            <FeedbackCard
+              title={t("assistant.unavailable")}
+              message={error}
+              tone="error"
+            />
+          ) : null}
+        </ScrollView>
+
+        <View className="border-t border-sand-300 bg-white px-4 pb-5 pt-4">
+          <View className="flex-row items-center gap-3">
+            <View className="flex-1 rounded-[20px] bg-sand-200 px-5 py-2">
+              <TextInput
+                value={question}
+                onChangeText={setQuestion}
+                placeholder="Ask about your finances..."
+                placeholderTextColor="#8d877e"
+                multiline
+                className="min-h-[48px] text-[16px] text-ink-900"
+                textAlignVertical="center"
+              />
+            </View>
+
+            <Pressable
+              onPress={() => handleAskAssistant(false)}
+              disabled={isLoading}
+              accessibilityRole="button"
+              className="h-16 w-16 items-center justify-center rounded-[20px]"
+              style={({ pressed }) => ({
+                opacity: isLoading ? 0.6 : pressed ? 0.94 : 1,
+                transform: [{ scale: pressed && !isLoading ? 0.98 : 1 }],
+              })}
+            >
+              <LinearGradient
+                colors={["#D8B4FE", "#EC4899"]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                className="h-16 w-16 items-center justify-center rounded-[20px]"
+                style={{overflow: "hidden"}}
+              >
+                <MaterialCommunityIcons
+                  name={isLoading ? "loading" : "send-outline"}
+                  size={24}
+                  color="#ffffff"
+                />
+              </LinearGradient>
+            </Pressable>
           </View>
-        </Panel>
-      </ScrollView>
+        </View>
+      </View>
     </Screen>
   );
 }

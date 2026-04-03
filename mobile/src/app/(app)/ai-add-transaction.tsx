@@ -254,13 +254,13 @@ export default function AiAddTransactionScreen() {
     <Screen padded={false}>
       <ScrollView
         className="flex-1 bg-sand-100"
-        contentContainerClassName="gap-6 px-5 py-4"
+        contentContainerClassName="gap-6 px-4 py-4"
       >
-        <View className="gap-2">
-          <Text className="text-3xl font-bold text-ink-900">{t("aiQuick.title")}</Text>
-          <Text className="text-base leading-7 text-ink-700">
-            {t("aiQuick.subtitle")}
-          </Text>
+        <View className="-mx-4 rounded-b-[28px] bg-accent-700 px-4 pb-6 pt-2">
+          <View className="gap-2">
+            <Text className="text-3xl font-semibold text-white">{t("aiQuick.title")}</Text>
+            <Text className="text-sm text-white/90">{t("aiQuick.subtitle")}</Text>
+          </View>
         </View>
 
         <Panel>
@@ -273,6 +273,7 @@ export default function AiAddTransactionScreen() {
                 {aiExamples.map((example) => (
                   <FilterChip
                     key={example}
+                    tone="accent"
                     label={example}
                     onPress={() => {
                       setPrompt(example);
@@ -298,6 +299,7 @@ export default function AiAddTransactionScreen() {
                 <PrimaryButton
                   label={isListening ? t("aiQuick.stopListening") : t("aiQuick.useMic")}
                   variant="ghost"
+                  tone="accent"
                   onPress={handleMicPress}
                   disabled={false}
                 />
@@ -319,6 +321,7 @@ export default function AiAddTransactionScreen() {
 
             <PrimaryButton
               label={isParsing ? t("add.parsing") : t("aiQuick.parseTransaction")}
+              tone="accent"
               onPress={handleParse}
               disabled={isParsing}
             />
@@ -329,16 +332,16 @@ export default function AiAddTransactionScreen() {
           <Panel>
             <View className="gap-4">
               <View className="gap-2">
-                <Text className="text-lg font-semibold text-ink-900">
-                  {t("aiQuick.suggestionTitle")}
+                <Text className="text-lg font-medium text-ink-900">
+                  ✓ {t("aiQuick.suggestionTitle")}
                 </Text>
                 <Text className="text-base leading-7 text-ink-700">
                   {t("aiQuick.suggestionSubtitle")}
                 </Text>
               </View>
 
-              <View className="gap-3">
-                <Text className="text-base text-ink-900">
+              <View className="gap-3 rounded-2xl border border-sand-300 bg-white px-4 py-2">
+                <Text className="border-b border-sand-300 py-3 text-base text-ink-900">
                   {t("aiQuick.type")}:{" "}
                   <Text className="font-semibold">
                     {parsedTransaction.type
@@ -350,7 +353,7 @@ export default function AiAddTransactionScreen() {
                       : t("common.missing")}
                   </Text>
                 </Text>
-                <Text className="text-base text-ink-900">
+                <Text className="border-b border-sand-300 py-3 text-base text-ink-900">
                   {t("aiQuick.amount")}:{" "}
                   <Text className="font-semibold">
                     {parsedTransaction.amount !== null
@@ -358,13 +361,13 @@ export default function AiAddTransactionScreen() {
                       : t("common.missing")}
                   </Text>
                 </Text>
-                <Text className="text-base text-ink-900">
+                <Text className="border-b border-sand-300 py-3 text-base text-ink-900">
                   {t("aiQuick.category")}:{" "}
                   <Text className="font-semibold">
                     {parsedTransaction.category || t("common.missing")}
                   </Text>
                 </Text>
-                <Text className="text-base text-ink-900">
+                <Text className="border-b border-sand-300 py-3 text-base text-ink-900">
                   {t("aiQuick.paymentMethod")}:{" "}
                   <Text className="font-semibold">
                     {parsedTransaction.paymentMethod
@@ -374,25 +377,25 @@ export default function AiAddTransactionScreen() {
                       : t("common.missing")}
                   </Text>
                 </Text>
-                <Text className="text-base text-ink-900">
+                <Text className="border-b border-sand-300 py-3 text-base text-ink-900">
                   {t("aiQuick.date")}:{" "}
                   <Text className="font-semibold">
                     {parsedTransaction.date || t("common.missing")}
                   </Text>
                 </Text>
-                <Text className="text-base text-ink-900">
+                <Text className="border-b border-sand-300 py-3 text-base text-ink-900">
                   {t("aiQuick.description")}:{" "}
                   <Text className="font-semibold">
                     {parsedTransaction.description || t("common.none")}
                   </Text>
                 </Text>
-                <Text className="text-base text-ink-900">
+                <Text className="border-b border-sand-300 py-3 text-base text-ink-900">
                   {t("aiQuick.person")}:{" "}
                   <Text className="font-semibold">
                     {parsedTransaction.person || t("common.none")}
                   </Text>
                 </Text>
-                <Text className="text-base text-ink-900">
+                <Text className="py-3 text-base text-ink-900">
                   {t("aiQuick.confidence")}:{" "}
                   <Text className="font-semibold">
                     {parsedTransaction.confidence !== null
@@ -423,6 +426,7 @@ export default function AiAddTransactionScreen() {
                 <View className="flex-1">
                   <PrimaryButton
                     label={isCreating ? t("aiQuick.saving") : t("aiQuick.save")}
+                    tone="green"
                     onPress={handleSave}
                     disabled={!isSaveReady || isCreating}
                   />
@@ -431,6 +435,7 @@ export default function AiAddTransactionScreen() {
                   <PrimaryButton
                     label={t("aiQuick.openFullForm")}
                     variant="ghost"
+                    tone="dark"
                     onPress={() => router.push("/(app)/add-transaction")}
                     disabled={isCreating}
                   />

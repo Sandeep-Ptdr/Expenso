@@ -34,7 +34,12 @@ export default function FeedbackCard({
         </Text>
         <Text className="text-base leading-7 text-ink-700">{message}</Text>
         {actionLabel && onAction ? (
-          <PrimaryButton label={actionLabel} onPress={onAction} variant="ghost" />
+          <PrimaryButton
+            label={actionLabel}
+            onPress={onAction}
+            variant="ghost"
+            tone={tone === "error" ? "orange" : "green"}
+          />
         ) : null}
       </View>
     </Panel>

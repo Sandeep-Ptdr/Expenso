@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { Alert, Pressable } from "react-native";
-import { RefreshControl, ScrollView, Text, View } from "react-native";
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useState } from "react";
+import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 
 import FeedbackCard from "@/components/ui/FeedbackCard";
 import FilterChip from "@/components/ui/FilterChip";
@@ -38,6 +38,7 @@ const formatDateInputValue = (date: Date) => {
 
 export default function TransactionsScreen() {
   const { language, t } = useI18n();
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [draftCategory, setDraftCategory] = useState("");
   const [draftType, setDraftType] = useState<TransactionType | "">("");
   const [draftPaymentMethod, setDraftPaymentMethod] = useState<
@@ -72,7 +73,7 @@ export default function TransactionsScreen() {
           onPress: async () => {
             try {
               await deleteTransaction(transactionId);
-            } catch (error) {
+            } catch {
               // Store/UI already handle the failure state.
             }
           },
@@ -131,7 +132,7 @@ export default function TransactionsScreen() {
     <Screen padded={false}>
       <ScrollView
         className="flex-1 bg-sand-100"
-        contentContainerClassName="gap-6 px-5 py-4"
+        contentContainerClassName="gap-6 px-4 py-4"
         refreshControl={
           <RefreshControl
             refreshing={isLoading}
@@ -140,154 +141,202 @@ export default function TransactionsScreen() {
           />
         }
       >
-        <View className="gap-2">
-          <Text className="text-3xl font-bold text-ink-900">{t("transactions.title")}</Text>
-          <Text className="text-base leading-7 text-ink-700">
-            {t("transactions.subtitle")}
-          </Text>
+        <View className="-mx-4 rounded-b-[28px] bg-forest-500 px-4 pb-6 pt-2">
+          <View className="flex-row items-center justify-between gap-3">
+            <View className="gap-2">
+              <Text className="text-3xl font-semibold text-white">
+                {t("transactions.title")}
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={() => setIsFilterOpen((current) => !current)}
+              className="h-11 w-11 items-center justify-center rounded-full bg-white/20"
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons
+                name={isFilterOpen ? "close" : "tune-variant"}
+                size={22}
+                color="#ffffff"
+              />
+            </Pressable>
+          </View>
         </View>
 
-        <Panel>
-          <View className="gap-4">
-            <FormInput
-              label={t("transactions.category")}
-              placeholder={t("transactions.categoryPlaceholder")}
-              value={draftCategory}
-              onChangeText={setDraftCategory}
-            />
-
-            <View className="gap-2">
-              <Text className="text-sm font-semibold text-ink-900">{t("transactions.type")}</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {(["income", "expense", "transfer"] as const).map((value) => (
-                  <FilterChip
-                    key={value}
-                    label={
-                      value === "income"
-                        ? t("transactionType.income")
-                        : value === "expense"
-                          ? t("transactionType.expense")
-                          : t("transactionType.transfer")
-                    }
-                    selected={draftType === value}
-                    onPress={() =>
-                      setDraftType(draftType === value ? "" : value)
-                    }
-                  />
-                ))}
-              </View>
-            </View>
-
-            <View className="gap-2">
-              <Text className="text-sm font-semibold text-ink-900">
-                {t("transactions.paymentMethod")}
-              </Text>
-              <View className="flex-row flex-wrap gap-2">
-                {(["cash", "online"] as const).map((value) => (
-                  <FilterChip
-                    key={value}
-                    label={value === "cash" ? t("paymentMethod.cash") : t("paymentMethod.online")}
-                    selected={draftPaymentMethod === value}
-                    onPress={() =>
-                      setDraftPaymentMethod(
-                        draftPaymentMethod === value ? "" : value
-                      )
-                    }
-                  />
-                ))}
-              </View>
-            </View>
-
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <View className="gap-2">
-                  <Text className="text-sm font-semibold text-ink-900">
-                    {t("transactions.startDate")}
+        {isFilterOpen ? (
+          <Panel>
+            <View className="gap-4">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-lg font-medium text-ink-900">Filters</Text>
+                <Pressable onPress={clearFilters}>
+                  <Text className="text-sm font-medium text-ink-700">
+                    {t("transactions.clear")}
                   </Text>
-                  <Pressable
-                    onPress={() => setActiveDateField("start")}
-                    className="rounded-2xl border border-sand-300 bg-white px-4 py-4"
-                  >
-                    <Text
-                      className={
-                        draftStartDate ? "text-base text-ink-900" : "text-base text-[#8d877e]"
-                      }
-                    >
-                      {draftStartDate
-                        ? parseDateInputValue(draftStartDate).toLocaleDateString(
-                            language === "hi" ? "hi-IN" : "en-IN",
-                            {
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric",
-                            }
-                          )
-                        : t("transactions.datePlaceholder")}
-                    </Text>
-                  </Pressable>
-                </View>
+                </Pressable>
               </View>
-              <View className="flex-1">
-                <View className="gap-2">
-                  <Text className="text-sm font-semibold text-ink-900">
-                    {t("transactions.endDate")}
-                  </Text>
-                  <Pressable
-                    onPress={() => setActiveDateField("end")}
-                    className="rounded-2xl border border-sand-300 bg-white px-4 py-4"
-                  >
-                    <Text
-                      className={
-                        draftEndDate ? "text-base text-ink-900" : "text-base text-[#8d877e]"
-                      }
-                    >
-                      {draftEndDate
-                        ? parseDateInputValue(draftEndDate).toLocaleDateString(
-                            language === "hi" ? "hi-IN" : "en-IN",
-                            {
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric",
-                            }
-                          )
-                        : t("transactions.datePlaceholder")}
-                    </Text>
-                  </Pressable>
-                </View>
-              </View>
-            </View>
 
-            {activeDateField ? (
-              <DateTimePicker
-                value={
-                  activeDateField === "start"
-                    ? parseDateInputValue(draftStartDate)
-                    : parseDateInputValue(draftEndDate)
-                }
-                mode="date"
-                display="default"
-                onChange={handleDateChange}
-                maximumDate={new Date(2100, 11, 31)}
+              <FormInput
+                label={t("transactions.category")}
+                placeholder={t("transactions.categoryPlaceholder")}
+                value={draftCategory}
+                onChangeText={setDraftCategory}
               />
-            ) : null}
 
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <PrimaryButton label={t("transactions.applyFilters")} onPress={applyFilters} />
+              <View className="gap-2">
+                <Text className="text-sm font-semibold text-ink-900">
+                  {t("transactions.type")}
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {(["income", "expense", "transfer"] as const).map((value) => (
+                    <FilterChip
+                      key={value}
+                      tone={
+                        value === "income"
+                          ? "green"
+                          : value === "expense"
+                            ? "orange"
+                            : "neutral"
+                      }
+                      label={
+                        value === "income"
+                          ? t("transactionType.income")
+                          : value === "expense"
+                            ? t("transactionType.expense")
+                            : t("transactionType.transfer")
+                      }
+                      selected={draftType === value}
+                      onPress={() => setDraftType(draftType === value ? "" : value)}
+                    />
+                  ))}
+                </View>
               </View>
-              <View className="flex-1">
-                <PrimaryButton
-                  label={t("transactions.clear")}
-                  variant="ghost"
-                  onPress={clearFilters}
+
+              <View className="gap-2">
+                <Text className="text-sm font-semibold text-ink-900">
+                  {t("transactions.paymentMethod")}
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  {(["cash", "online"] as const).map((value) => (
+                    <FilterChip
+                      key={value}
+                      tone="blue"
+                      label={
+                        value === "cash"
+                          ? t("paymentMethod.cash")
+                          : t("paymentMethod.online")
+                      }
+                      selected={draftPaymentMethod === value}
+                      onPress={() =>
+                        setDraftPaymentMethod(
+                          draftPaymentMethod === value ? "" : value
+                        )
+                      }
+                    />
+                  ))}
+                </View>
+              </View>
+
+              <View className="flex-row gap-3">
+                <View className="flex-1">
+                  <View className="gap-2">
+                    <Text className="text-sm font-semibold text-ink-900">
+                      {t("transactions.startDate")}
+                    </Text>
+                    <Pressable
+                      onPress={() => setActiveDateField("start")}
+                      className="min-h-[52px] justify-center rounded-xl border border-sand-300 bg-sand-200 px-4 py-3"
+                    >
+                      <Text
+                        className={
+                          draftStartDate
+                            ? "text-base text-ink-900"
+                            : "text-base text-[#8d877e]"
+                        }
+                      >
+                        {draftStartDate
+                          ? parseDateInputValue(draftStartDate).toLocaleDateString(
+                              language === "hi" ? "hi-IN" : "en-IN",
+                              {
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                              }
+                            )
+                          : t("transactions.datePlaceholder")}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                <View className="flex-1">
+                  <View className="gap-2">
+                    <Text className="text-sm font-semibold text-ink-900">
+                      {t("transactions.endDate")}
+                    </Text>
+                    <Pressable
+                      onPress={() => setActiveDateField("end")}
+                      className="min-h-[52px] justify-center rounded-xl border border-sand-300 bg-sand-200 px-4 py-3"
+                    >
+                      <Text
+                        className={
+                          draftEndDate
+                            ? "text-base text-ink-900"
+                            : "text-base text-[#8d877e]"
+                        }
+                      >
+                        {draftEndDate
+                          ? parseDateInputValue(draftEndDate).toLocaleDateString(
+                              language === "hi" ? "hi-IN" : "en-IN",
+                              {
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                              }
+                            )
+                          : t("transactions.datePlaceholder")}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+
+              {activeDateField ? (
+                <DateTimePicker
+                  value={
+                    activeDateField === "start"
+                      ? parseDateInputValue(draftStartDate)
+                      : parseDateInputValue(draftEndDate)
+                  }
+                  mode="date"
+                  display="default"
+                  onChange={handleDateChange}
+                  maximumDate={new Date(2100, 11, 31)}
                 />
+              ) : null}
+
+              <View className="flex-row gap-3">
+                <View className="flex-1">
+                  <PrimaryButton
+                    label={t("transactions.applyFilters")}
+                    tone="green"
+                    onPress={applyFilters}
+                  />
+                </View>
+                <View className="flex-1">
+                  <PrimaryButton
+                    label={t("transactions.clear")}
+                    variant="ghost"
+                    tone="dark"
+                    onPress={clearFilters}
+                  />
+                </View>
               </View>
             </View>
-          </View>
-        </Panel>
+          </Panel>
+        ) : null}
 
         <View className="gap-3">
-          <Text className="text-lg font-semibold text-ink-900">
+          <Text className="text-lg font-medium text-ink-900">
             {t("transactions.count", {
               count: transactions.length,
               s: transactions.length === 1 ? "" : "s",

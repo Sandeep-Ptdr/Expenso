@@ -201,20 +201,20 @@ export default function AddTransactionScreen() {
     <Screen padded={false}>
       <ScrollView
         className="flex-1 bg-sand-100"
-        contentContainerClassName="gap-6 px-5 py-4"
+        contentContainerClassName="gap-6 px-4 py-4"
       >
-        <View className="gap-2">
-          <Text className="text-3xl font-bold text-ink-900">{t("add.title")}</Text>
-          <Text className="text-base leading-7 text-ink-700">
-            {t("add.subtitle")}
-          </Text>
+        <View className="-mx-4 rounded-b-[28px] bg-forest-500 px-4 pb-6 pt-2">
+          <View className="gap-2">
+            <Text className="text-3xl font-semibold text-white">{t("add.title")}</Text>
+            <Text className="text-sm text-white/90">{t("add.subtitle")}</Text>
+          </View>
         </View>
 
-        <Panel>
+        <View className="rounded-2xl border border-accent-500/20 bg-accent-100 p-5 shadow-card">
           <View className="gap-4">
             <View className="gap-2">
-              <Text className="text-lg font-semibold text-ink-900">
-                {t("add.aiParserTitle")}
+              <Text className="text-lg font-medium text-accent-500">
+                ✦ {t("add.aiParserTitle")}
               </Text>
               <Text className="text-base leading-7 text-ink-700">
                 {t("add.aiParserSubtitle")}
@@ -229,6 +229,7 @@ export default function AddTransactionScreen() {
                 {aiExamples.map((example) => (
                   <FilterChip
                     key={example}
+                    tone="accent"
                     label={example}
                     onPress={() => {
                       setAiPrompt(example);
@@ -292,6 +293,7 @@ export default function AddTransactionScreen() {
               <View className="flex-1">
                 <PrimaryButton
                   label={isParsing ? t("add.parsing") : t("add.fillWithAI")}
+                  tone="accent"
                   onPress={handleParseTransactionText}
                   disabled={isParsing}
                 />
@@ -300,6 +302,7 @@ export default function AddTransactionScreen() {
                 <PrimaryButton
                   label={t("add.clear")}
                   variant="ghost"
+                  tone="dark"
                   onPress={() => {
                     setAiPrompt("");
                     setAiError("");
@@ -312,16 +315,23 @@ export default function AddTransactionScreen() {
               </View>
             </View>
           </View>
-        </Panel>
+        </View>
 
         <Panel>
           <View className="gap-4">
             <View className="gap-2">
-              <Text className="text-sm font-semibold text-ink-900">{t("add.type")}</Text>
+              <Text className="text-base font-medium text-ink-900">{t("add.type")}</Text>
               <View className="flex-row flex-wrap gap-2">
                 {(["income", "expense", "transfer"] as const).map((value) => (
                   <FilterChip
                     key={value}
+                    tone={
+                      value === "income"
+                        ? "green"
+                        : value === "expense"
+                          ? "orange"
+                          : "neutral"
+                    }
                     label={
                       value === "income"
                         ? t("transactionType.income")
@@ -379,6 +389,7 @@ export default function AddTransactionScreen() {
                 {(["cash", "online"] as const).map((value) => (
                   <FilterChip
                     key={value}
+                    tone="blue"
                     label={value === "cash" ? t("paymentMethod.cash") : t("paymentMethod.online")}
                     selected={selectedPaymentMethod === value}
                     onPress={() =>
@@ -401,7 +412,7 @@ export default function AddTransactionScreen() {
                   </Text>
                   <Pressable
                     onPress={() => setIsDatePickerVisible(true)}
-                    className="rounded-2xl border border-sand-300 bg-white px-4 py-4"
+                    className="min-h-[52px] justify-center rounded-xl border border-sand-300 bg-sand-200 px-4 py-3"
                   >
                     <Text className="text-base text-ink-900">
                       {parseDateInputValue(value).toLocaleDateString(
@@ -474,6 +485,7 @@ export default function AddTransactionScreen() {
 
             <PrimaryButton
               label={isSubmitting ? t("add.saving") : t("add.save")}
+              tone="green"
               onPress={onSubmit}
               disabled={isSubmitting}
             />

@@ -57,18 +57,23 @@ export default function RegisterScreen() {
     <Screen padded={false}>
       <ScrollView
         className="flex-1 bg-sand-100"
-        contentContainerClassName="flex-grow justify-center gap-6 px-5 py-4"
+        contentContainerClassName="flex-grow justify-center gap-8 px-4 py-6"
       >
         <View className="items-end">
           <LanguageToggle />
         </View>
-        <View className="gap-3">
-          <Text className="text-3xl font-bold leading-tight text-ink-900">
-            {t("auth.registerTitle")}
-          </Text>
-          <Text className="text-base leading-7 text-ink-700">
-            {t("auth.registerSubtitle")}
-          </Text>
+        <View className="items-center gap-5 px-2">
+          <View className="h-16 w-16 items-center justify-center rounded-2xl bg-forest-500 shadow-button">
+            <Text className="text-3xl font-semibold text-white">₹</Text>
+          </View>
+          <View className="items-center gap-2">
+            <Text className="text-4xl font-semibold leading-tight text-ink-900">
+              {t("auth.registerTitle")}
+            </Text>
+            <Text className="text-center text-base leading-7 text-ink-700">
+              {t("auth.registerSubtitle")}
+            </Text>
+          </View>
         </View>
 
         <Panel>
@@ -140,7 +145,7 @@ export default function RegisterScreen() {
         </Panel>
 
         <Link href="/(auth)/login" asChild>
-          <Text className="text-center text-base font-semibold text-forest-700">
+          <Text className="text-center text-base font-medium text-ink-700">
             {t("auth.haveAccount")}
           </Text>
         </Link>

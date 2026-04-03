@@ -1,6 +1,6 @@
+import type { ComponentProps } from "react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Text, View } from "react-native";
-
-import { useI18n } from "@/hooks/use-i18n";
 
 type SummaryCardProps = {
   label: string;
@@ -8,10 +8,39 @@ type SummaryCardProps = {
   accent: "green" | "orange" | "neutral";
 };
 
-const accentMap = {
-  green: "bg-forest-500/10 text-forest-700",
-  orange: "bg-coral-500/10 text-coral-500",
-  neutral: "bg-sand-200 text-ink-900",
+type SummaryIconName = ComponentProps<typeof MaterialCommunityIcons>["name"];
+
+const accentMap: Record<
+  SummaryCardProps["accent"],
+  {
+    card: string;
+    icon: SummaryIconName;
+    iconWrap: string;
+    label: string;
+    value: string;
+  }
+> = {
+  green: {
+    card: "bg-[#D1FAE5]",
+    icon: "trending-up",
+    iconWrap: "bg-forest-500",
+    label: "text-forest-700",
+    value: "text-forest-900",
+  },
+  orange: {
+    card: "bg-[#FED7AA]",
+    icon: "trending-down",
+    iconWrap: "bg-coral-500",
+    label: "text-coral-700",
+    value: "text-coral-700",
+  },
+  neutral: {
+    card: "bg-white",
+    icon: "wallet-outline",
+    iconWrap: "bg-sky-500",
+    label: "text-sky-500",
+    value: "text-ink-900",
+  },
 };
 
 export default function SummaryCard({
@@ -19,19 +48,28 @@ export default function SummaryCard({
   value,
   accent,
 }: SummaryCardProps) {
-  const { t } = useI18n();
-
   return (
-    <View className="flex-1 rounded-[24px] border border-sand-200 bg-white px-4 py-5">
-      <Text className="text-sm font-medium text-ink-700">{label}</Text>
-      <Text className="mt-3 text-2xl font-bold text-ink-900">{value}</Text>
-      <View className={`mt-4 self-start rounded-full px-3 py-1 ${accentMap[accent]}`}>
-        <Text className="text-xs font-semibold">
-          {accent === "green"
-            ? t("summary.onTrack")
-            : accent === "orange"
-              ? t("summary.needsAttention")
-              : t("summary.overview")}
+    <View
+      className={`rounded-[24px] border border-sand-300 px-4 py-5 shadow-card ${accentMap[accent].card}`}
+    >
+      <View className="gap-5">
+        <View className="flex-row items-center gap-3">
+          <View
+            className={`h-10 w-10 items-center justify-center rounded-full ${accentMap[accent].iconWrap}`}
+          >
+            <MaterialCommunityIcons
+              name={accentMap[accent].icon}
+              size={20}
+              color="#ffffff"
+            />
+          </View>
+          <Text className={`text-[15px] font-medium ${accentMap[accent].label}`}>
+            {label}
+          </Text>
+        </View>
+
+        <Text className={`text-[20px] font-semibold ${accentMap[accent].value}`}>
+          {value}
         </Text>
       </View>
     </View>

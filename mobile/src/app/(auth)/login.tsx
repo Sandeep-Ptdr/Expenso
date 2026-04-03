@@ -55,21 +55,23 @@ export default function LoginScreen() {
     <Screen padded={false}>
       <ScrollView
         className="flex-1 bg-sand-100"
-        contentContainerClassName="flex-grow justify-center gap-6 px-5 py-4"
+        contentContainerClassName="flex-grow justify-center gap-8 px-4 py-6"
       >
         <View className="items-end">
           <LanguageToggle />
         </View>
-        <View className="gap-3">
-          <Text className="text-xs font-semibold uppercase tracking-[2px] text-forest-700">
-            {t("auth.appName")}
-          </Text>
-          <Text className="text-4xl font-bold leading-tight text-ink-900">
-            {t("auth.loginTitle")}
-          </Text>
-          <Text className="text-base leading-7 text-ink-700">
-            {t("auth.loginSubtitle")}
-          </Text>
+        <View className="items-center gap-5 px-2">
+          <View className="h-16 w-16 items-center justify-center rounded-2xl bg-forest-500 shadow-button">
+            <Text className="text-3xl font-semibold text-white">₹</Text>
+          </View>
+          <View className="items-center gap-2">
+            <Text className="text-4xl font-semibold text-ink-900">
+              {t("auth.appName")}
+            </Text>
+            <Text className="text-center text-base leading-7 text-ink-700">
+              {t("auth.loginSubtitle")}
+            </Text>
+          </View>
         </View>
 
         <Panel>
@@ -123,7 +125,7 @@ export default function LoginScreen() {
         </Panel>
 
         <Link href="/(auth)/register" asChild>
-          <Text className="text-center text-base font-semibold text-forest-700">
+          <Text className="text-center text-base font-medium text-ink-700">
             {t("auth.needAccount")}
           </Text>
         </Link>

@@ -10,11 +10,11 @@ const navigationTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: "#f4efe6",
-    card: "#fffdf9",
-    border: "#e8dfd1",
-    text: "#161616",
-    primary: "#1f6f5f",
+    background: "#faf9f6",
+    card: "#ffffff",
+    border: "rgba(0, 0, 0, 0.08)",
+    text: "#2d2d2d",
+    primary: "#10b981",
   },
 };
 
